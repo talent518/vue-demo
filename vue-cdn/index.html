@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Vue demo</title>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script type="text/javascript" src="jquery-3.4.1.js"></script>
+<style type="text/css">
+.changeColor{background:red;}
+.changeLength:after{content:' Length';}
+</style>
+</head>
+<body>
+	<div id="vue-app">
+		<h1>{{ title }}</h1>
+		<h2>{{ greet() }}</h2>
+		<h2>{{ greet('afternoon') }}</h2>
+		<p>{{ desc }}</p>
+		<a v-bind:href="github">Myself github account</a>
+		<p v-html="html">
+			<!-- 属性绑定 -->
+		</p>
+
+		<h1>Events</h1>
+		<button v-on:click="age--">减一岁</button>
+		<button v-on:click="age++">加一岁</button>
+		<button v-on:click="decrAge">减一岁</button>
+		<button v-on:click="incrAge">加一岁</button>
+		<button v-on:dblclick="decrAge" title="双击">减一岁</button>
+		<button v-on:dblclick="incrAge" title="双击">加一岁</button>
+		<p>My age is {{age}}</p>
+
+		<div v-on:mousemove="updateXY" style="height:200px;border:1px #ccc solid">{{x}}, {{y}} - <span v-on:mousemove.stop="">Stop moving</span></div>
+		<div id="j-slt"></div>
+		
+		<h1>双向数据绑定</h1>
+		<label>姓名：</label> <input ref="name" type="text" v-on:keyup="nameEnter" /> <span>{{name}}</span>
+		<label>年龄：</label> <input ref="age" type="text" v-on:keyup="ageEnter" /> <span>{{age}}</span>
+		<label>Model：</label> <input type="text" v-model="age2" /> <span>{{age2}}</span>
+		
+		<h1>动态 CSS Class</h1>
+		<h2>示例1</h2>
+		<div v-on:click="changeColor = ! changeColor" v-bind:class="{changeColor:changeColor,changeLength:changeLength}">
+			<span>Henry</span>
+		</div>
+		<h2>示例2</h2>
+		<button v-on:click="changeColor = ! changeColor">changeColor</button>
+		<button v-on:click="changeLength = ! changeLength">changeLength</button>
+		<div v-bind:class="compClasses">Henry</div>
+		
+		<h1>v-if v-show</h1>
+		<button v-on:click="error = !error">Error</button>
+		<button v-on:click="success = !success">Success</button>
+		
+		<h3>v-if v-else-if v-else</h3>
+		<div v-if="error">网络连接错误：404</div>
+		<div v-else-if="success">网络连接成功: 200</div>
+		<div v-else>即无错误又未成功</div>
+		
+		<h3>v-if v-else</h3>
+		<div v-if="error">有错误</div>
+		<div v-else>无错误</div>
+		<div v-if="success">成功</div>
+		<div v-else>不成功</div>
+		
+		<h3>v-show</h3>
+		<div v-show="error">show错误</div>
+		<div v-show="success">show成功</div>
+		
+		<h3>Values for error and success</h3>
+		<div> error: {{error}}, success: {{success}}</div>
+		
+		<h1>v-for 循环</h1>
+		<ul>
+			<li v-for="(str,i) in strs">{{i}}. {{str}}</li>
+		</ul>
+		<ul>
+			<li v-for="obj in objs">{{obj.name}} - {{obj.age}}</li>
+		</ul>
+		<template v-for="(obj,index) in objs">
+			<h3>{{index}}</h3>
+			<p>Name is {{obj.name}}</p>
+			<p>Age is {{obj.age}}</p>
+			<ul>
+				<li v-for="(v,k) in obj">{{k}}: {{v}}</li>
+			</ul>
+		</template>
+	</div>
+	<script type="text/javascript">
+		var app = new Vue({
+			el : '#vue-app',
+			data : { // methods中使用this访问该data中的属性
+				title : 'Hello title',
+				desc : 'vue study demo.',
+				github : 'https://github.com/talent518',
+				html : '<a href="app.js">app.js</a>',
+				age : 20,
+				x : 0,
+				y : 0,
+				name : '',
+				age2 : '',
+				changeColor: false,
+				changeLength: false,
+				error: false,
+				success: false,
+				strs: ["张三","李四","王二","麻子"],
+				objs: [
+					{name:"张三",age:20,k1:"dsdf"},
+					{name:"李四",age:21,k2:123},
+					{name:"王二",age:17,k3:true},
+					{name:"麻子",age:26,k4:false}
+				]
+			},
+			methods : {
+				greet : function(t) { // 打招呼
+					// console.log('call greet ...');
+					return 'Good ' + (t || 'morning') + '! ' + this.title;
+				},
+				incrAge : function() {
+					this.age++;
+				},
+				decrAge : function() {
+					this.age--;
+				},
+				updateXY : function(e) {
+					this.x = e.offsetX;
+					this.y = e.offsetY;
+				},
+				nameEnter : function() {
+					console.log('Inputing name ...');
+					this.name = this.$refs.name.value;
+				},
+				ageEnter : function() {
+					console.log('Inputing age ...');
+					this.age = this.$refs.age.value;
+				}
+			},
+			computed: {
+				compClasses : function() {
+					// console.log('call compClasses ...');
+					return {
+						changeColor: this.changeColor,
+						changeLength: this.changeLength
+					};
+				}
+			},
+			mounted: function() {
+				if(0) {
+					let elem = document.getElementById('j-slt');
+					if(elem) {
+						elem.innerHTML = 'sdfsdf d fsdf df <br/> ' + elem.previousElementSibling.innerHTML;
+					}
+				} else {
+					$('#j-slt').html('sdfdfs sdfdsadf sdfd <br/> ' + $('#j-slt').prev().html())
+				}
+			}
+		});
+	</script>
+</body>
+</html>
