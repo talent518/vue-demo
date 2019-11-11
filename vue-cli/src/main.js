@@ -37,6 +37,19 @@ import App from './App'
 // Vue.component('users', Users);
 
 // 配置路由
+import Files from './components/Files';
+import FilesImage from './components/FilesImage';
+import FilesCss from './components/FilesCss';
+import FilesJs from './components/FilesJs';
+import FilesId from './components/FilesId';
+
+const fileRoutes = [
+	{path:'image',component:FilesImage},
+	{path:'css',component:FilesCss},
+	{path:'js',component:FilesJs},
+	{path:':id',component:FilesId},
+];
+
 import Home from './components/Home';
 import HelloWorld from './components/HelloWorld';
 import VueRouter from 'vue-router';
@@ -44,6 +57,7 @@ const router = new VueRouter({
 	routes: [
 		{path:'/',component:Home},
 		{path:'/hello-world',component:HelloWorld},
+		{path:'/files',component:Files,children:fileRoutes},
 	],
 	mode: "history"
 });

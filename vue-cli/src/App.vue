@@ -3,6 +3,7 @@
 	<nav>
 		<router-link to="/">Home</router-link>
 		<router-link to="/hello-world">HelloWorld</router-link>
+		<router-link to="/files">Files</router-link>
 	</nav>
 	<router-view />
 </div>
@@ -26,8 +27,8 @@ body{margin:0;font-size:14px;}
 .container{width:800px;margin:0 auto;}
 #app>nav{background:#bbb;padding:10px;}
 #app>nav>a{margin-right:5px;text-decoration:none;color:blue;}
-#app>nav>a:hover{color:#F20;}
 #app>nav>a:visited{color:#33c;}
-#app>nav>a.router-link-exact-active{font-weight:bold;}
+#app>nav>a:hover{color:#F20;}
+#app>nav>a.router-link-exact-active{font-weight:bold;color:#F60;}
 h1{margin:0;font-size:18px;}
 </style>
