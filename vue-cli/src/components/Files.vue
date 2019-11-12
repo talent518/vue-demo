@@ -1,11 +1,9 @@
 <template>
 	<div class="m-files">
-		<nav pre="false">
-			<router-link to="/files">Index</router-link>
-			<router-link to="/files/image">Image</router-link>
-			<router-link to="/files/css">CSS</router-link>
-			<router-link to="/files/js">JS</router-link>
-			<router-link :to="filesId">{{fid}}</router-link>
+		<nav>
+			<router-link to="/files">{{home}}</router-link>
+			<router-link v-for="(name,path) in fileRoutes" :to="'/files/'+path">{{name}}</router-link>
+			<router-link v-if="isFilesId" :to="filesId">{{fid}}</router-link>
 		</nav>
 		<span>Files</span>
 		<router-view @randInt="randInt($event)"></router-view>
@@ -13,11 +11,27 @@
 </template>
 
 <script>
+import fileRoutes from '@/router/files';
+
 export default {
 	name: 'Files',
 	data() {
+		let routes = {};
+		fileRoutes.forEach(function(v,k){
+			routes[v.path] = v.component.name.replace(/^Files/,'');
+		});
+		
+		let isFilesId = ':id' in routes;
+		delete routes[':id'];
+		
+		let home = routes[''];
+		delete routes[''];
+		
 		return {
-			fid: parseInt(Math.random()*100000)
+			fid: parseInt(Math.random()*100000),
+			fileRoutes: routes,
+			isFilesId,
+			home
 		};
 	},
 	methods: {
@@ -29,6 +43,10 @@ export default {
 		filesId: function() {
 			return '/files/' + this.fid;
 		}
+	},
+	updated: function() {
+		console.log('Files - updated');
+		console.log(this.$parent);
 	}
 }
 </script>

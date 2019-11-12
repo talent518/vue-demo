@@ -1,9 +1,7 @@
 <template>
 <div id="app">
 	<nav>
-		<router-link to="/">Home</router-link>
-		<router-link to="/hello-world">HelloWorld</router-link>
-		<router-link to="/files">Files</router-link>
+		<router-link v-for="route in $router.options.routes" v-if="route.path !== '*'" :to="route.path">{{route.component.name}}</router-link>
 	</nav>
 	<router-view />
 </div>
@@ -29,6 +27,7 @@ body{margin:0;font-size:14px;}
 #app>nav>a{margin-right:5px;text-decoration:none;color:blue;}
 #app>nav>a:visited{color:#33c;}
 #app>nav>a:hover{color:#F20;}
-#app>nav>a.router-link-exact-active{font-weight:bold;color:#F60;}
+#app>nav>a.router-link-exact-active:first-child,#app>nav>a.router-link-active:not(:first-child){font-weight:bold;}
+#app>nav>a.router-link-exact-active{color:#F60;}
 h1{margin:0;font-size:18px;}
 </style>

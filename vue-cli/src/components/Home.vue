@@ -13,7 +13,7 @@ import Footer from './Footer';
 import Users from './Users';
 
 export default {
-	name: 'App',
+	name: 'Home',
 	data() {
 		return {
 			title: '',
