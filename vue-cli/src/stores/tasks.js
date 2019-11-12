@@ -20,12 +20,23 @@ const store = new Vuex.Store({
 		delTask: function(state, payload) {
 			let t = state.tasks.splice(payload,1)[0];
 			if(t) {
-				state[t.status+'Count']++;
+				state[t.status+'Count']--;
 				state.taskCount--;
 			}
 		}
 	},
 	actions: {
+	},
+	getters: {
+		unstartTasks(state) {
+			return state.tasks.filter(item=>item.status === 'unstart');
+		},
+		runningTasks(state) {
+			return state.tasks.filter(item=>item.status === 'running');
+		},
+		completedTasks(state) {
+			return state.tasks.filter(item=>item.status === 'completed');
+		},
 	}
 });
 

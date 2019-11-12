@@ -2,13 +2,13 @@
 <div>
 	running
 	<ul>
-		<li v-for="task in tasks" v-if="task.status === 'running'"><input type="checkbox" v-model="task.checked"/> <span>{{task.name}}</span></li>
+		<li v-for="task in runningTasks"><input type="checkbox" v-model="task.checked"/> <span>{{task.name}}</span></li>
 	</ul>
 </div>
 </template>
 
 <script>
-import {mapState} from 'vuex';
+import {mapGetters} from 'vuex';
 
 export default {
 	name: 'Running',
@@ -16,7 +16,7 @@ export default {
 		return {};
 	},
 	computed: {
-		...mapState(['tasks'])
+		...mapGetters(['runningTasks'])
 	},
 	mounted() {
 		this.$emit('value', 'running');
