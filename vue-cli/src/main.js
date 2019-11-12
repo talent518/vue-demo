@@ -30,43 +30,11 @@ Object.defineProperty(Array.prototype, 'clean', {
 // The Vue build version to load with the `import` command
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 import Vue from 'vue'
+import VueResource from 'vue-resource';
+import router from './router';
 import App from './App'
 
-// 全局组件
-// import Users from './components/Users.vue';
-// Vue.component('users', Users);
-
-// 配置路由
-import Files from './components/Files';
-import FilesImage from './components/FilesImage';
-import FilesCss from './components/FilesCss';
-import FilesJs from './components/FilesJs';
-import FilesId from './components/FilesId';
-
-const fileRoutes = [
-	{path:'image',component:FilesImage},
-	{path:'css',component:FilesCss},
-	{path:'js',component:FilesJs},
-	{path:':id',component:FilesId},
-];
-
-import Home from './components/Home';
-import HelloWorld from './components/HelloWorld';
-import VueRouter from 'vue-router';
-const router = new VueRouter({
-	routes: [
-		{path:'/',component:Home},
-		{path:'/hello-world',component:HelloWorld},
-		{path:'/files',component:Files,children:fileRoutes},
-		{path:'*',component:{template:'<h1 style="padding:10px;color:red;">404 - Not Found</h1>'}}
-	],
-	mode: "history"
-});
-
-import VueResource from 'vue-resource';
-
 Vue.config.productionTip = false;
-Vue.use(VueRouter);
 Vue.use(VueResource);
 
 /* eslint-disable no-new */
