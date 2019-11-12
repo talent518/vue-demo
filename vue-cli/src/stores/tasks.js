@@ -3,13 +3,30 @@ import Vue from 'vue'
 
 Vue.use(Vuex);
 
-export default new Vuex.Store({
+const store = new Vuex.Store({
 	state: {
-		count: 0
+		tasks: [],
+		taskCount: 0,
+		unstartCount: 0,
+		runningCount: 0,
+		completedCount: 0
 	},
 	mutations: {
-		increment (state) {
-			state.count++
+		addTask: function(state, payload) {
+			state.tasks.push(payload);
+			state[payload.status+'Count']++;
+			state.taskCount++;
+		},
+		delTask: function(state, payload) {
+			let t = state.tasks.splice(payload,1)[0];
+			if(t) {
+				state[t.status+'Count']++;
+				state.taskCount--;
+			}
 		}
+	},
+	actions: {
 	}
 });
+
+export default store;

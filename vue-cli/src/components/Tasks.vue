@@ -98,7 +98,6 @@ export default {
 				return -1;
 		});
 		return {
-			inputText: '',
 			tasks,
 			isSelectedAll: false,
 			status: {all:true,unstart:false,running:false,completed:false,suspend:false},
