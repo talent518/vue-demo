@@ -1,10 +1,7 @@
 <template>
-<div>
-	running
-	<ul>
-		<li v-for="task in runningTasks"><input type="checkbox" v-model="task.checked"/> <span>{{task.name}}</span></li>
-	</ul>
-</div>
+	<ol>
+		<li v-for="task in runningTasks" :class="{checked:task.checked}"><input type="checkbox" v-model="task.checked"/> <span>{{task.name}}</span></li>
+	</ol>
 </template>
 
 <script>

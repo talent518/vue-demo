@@ -8,6 +8,7 @@
 			<router-link to="/tasks-vuex/running">Running({{runningCount}})</router-link>
 			<router-link to="/tasks-vuex/completed">Completed({{completedCount}})</router-link>
 		</nav>
+		<h3>Current page: {{status}}</h3>
 		<router-view v-on:value="status = $event"></router-view>
 	</div>
 </template>
@@ -33,7 +34,8 @@ export default {
 			this.status = status;
 		},
 		inputEnter: function() {
-			console.log(this.inputText);
+			if(!this.inputText) return;
+			
 			this.$store.commit('addTask', {name:this.inputText,checked:false,status:this.status=='all'?'unstart':this.status});
 			this.inputText = '';
 		}
@@ -54,4 +56,8 @@ export default {
 .m-tasks-vuex span.status.unstart {color:#F60;}
 .m-tasks-vuex span.status.running {color:#33c;}
 .m-tasks-vuex span.status.completed {color:#3c3;}
+.m-tasks-vuex ol{padding-left:2em;line-height:22px;}
+.m-tasks-vuex li{padding-left:3px;margin:1px 0;}
+.m-tasks-vuex li.checked{background:#ddd;}
+.m-tasks-vuex li span.del{cursor:pointer;color:blue;font-weight:bold;}
 </style>
