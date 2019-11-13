@@ -1,5 +1,6 @@
 <template>
 	<div class="m-files">
+		<h1>Files</h1>
 		<nav>
 			<router-link to="/files">{{home}}</router-link>
 			<router-link v-for="(name,path) in fileRoutes" :to="'/files/'+path">{{name}}</router-link>

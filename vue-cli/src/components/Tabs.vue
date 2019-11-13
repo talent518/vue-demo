@@ -1,5 +1,6 @@
 <template>
 <div class="m-tabs">
+	<h1>Tabs</h1>
 	<nav>
 		<span v-for="tab in tabList" :title="tab.name" @click="switchTo(tab)" :class="{checked:tab.checked}">{{tab.title}}</span>
 	</nav>
@@ -137,16 +138,20 @@ export default {
 			this.tabTitle = tab.title;
 			this.img = this.imgs[this.tabName];
 			
-			window.location.hash = '#' + this.tabName;
+			if(this.$root.$router.mode === 'history') window.location.hash = '#' + this.tabName;
 			tab.checked = true;
 		}
 	},
 	created() {
-		let hash = window.location.hash.substr(1);
-		if(hash in this.tabMap)
-			this.switchTo(this.tabMap[hash]);
-		else
+		if(this.$root.$router.mode === 'history') {
+			let hash = window.location.hash.substr(1);
+			if(hash in this.tabMap)
+				this.switchTo(this.tabMap[hash]);
+			else
+				this.switchTo(this.tabList[0]);
+		} else {
 			this.switchTo(this.tabList[0]);
+		}
 	}
 };
 </script>

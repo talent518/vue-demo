@@ -32,28 +32,28 @@ export default {
 		}
 	},
 	beforeCreate: function() {
-		console.log('App - beforeCreate');
+		console.log('Home - beforeCreate');
 	},
 	created: function() {
-		console.log('App - created');
+		console.log('Home - created');
 	},
 	beforeMount: function() {
-		console.log('App - beforeMount');
+		console.log('Home - beforeMount');
 	},
 	mounted: function() {
-		console.log('App - mounted');
+		console.log('Home - mounted');
 	},
 	beforeUpdate: function() {
-		console.log('App - beforeUpdate');
+		console.log('Home - beforeUpdate');
 	},
 	updated: function() {
-		console.log('App - updated');
+		console.log('Home - updated');
 	},
 	beforeDestroy: function() {
-		console.log('App - beforeDestroy');
+		console.log('Home - beforeDestroy');
 	},
 	destroyed: function() {
-		console.log('App - destroyed');
+		console.log('Home - destroyed');
 	}
 }
 </script>

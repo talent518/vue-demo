@@ -1,84 +1,81 @@
 <template>
 <div class="hello">
-	<h1>{{title}}</h1>
-	<template v-if="users && users.length">
-		<h3><a v-on:click.prevent="refresh" href="#" style="float:right;">Refresh</a>User list from jsonplaceholder.typicode.com</h3>
-		<table>
-			<thead>
-				<tr>
-					<th rowspan="2">ID</th>
-					<th rowspan="2">Name</th>
-					<th rowspan="2">User Name</th>
-					<th rowspan="2">E-mail</th>
-					<th colspan="4">Address</th>
-					<th colspan="2">GEO</th>
-					<th rowspan="2">Phone</th>
-					<th rowspan="2">Website</th>
-					<th colspan="3">Company</th>
-				</tr>
-				<tr>
-					<!-- Address -->
-					<th>Street</th>
-					<th>Suite</th>
-					<th>City</th>
-					<th>Zipcode</th>
-					<th>lat</th>
-					<th>lng</th>
-					
-					<!-- Company -->
-					<th>Name</th>
-					<th>Catch Phrase</th>
-					<th>BS</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr v-for="user in users">
-					<td>{{user.id}}</td>
-					<td>{{user.name}}</td>
-					<td>{{user.username}}</td>
-					<td v-html="mailto(user.name,user.email)"></td>
-					<template v-if="user.address">
-						<td>{{user.address.street}}</td>
-						<td>{{user.address.suite}}</td>
-						<td>{{user.address.city}}</td>
-						<td>{{user.address.zipcode}}</td>
-						<td>{{user.address.geo.lat}}</td>
-						<td>{{user.address.geo.lng}}</td>
-					</template>
-					<template v-else>
-						<td></td>
-						<td></td>
-						<td></td>
-						<td></td>
-						<td></td>
-						<td></td>
-					</template>
-					<td>{{user.phone}}</td>
-					<td>{{user.website}}</td>
-					<template v-if="user.company">
-						<td>{{user.company.name}}</td>
-						<td>{{user.company.catchPhrase}}</td>
-						<td>{{user.company.bs}}</td>
-					</template>
-					<template v-else>
-						<td></td>
-						<td></td>
-						<td></td>
-					</template>
-				</tr>
-			</tbody>
-		</table>
-	</template>
+	<h1>Ajax</h1>
+	<h3><a v-on:click.prevent="refresh" href="#" style="float:right;">Refresh</a>User list from jsonplaceholder.typicode.com</h3>
+	<table v-if="users && users.length">
+		<thead>
+			<tr>
+				<th rowspan="2">ID</th>
+				<th rowspan="2">Name</th>
+				<th rowspan="2">User Name</th>
+				<th rowspan="2">E-mail</th>
+				<th colspan="4">Address</th>
+				<th colspan="2">GEO</th>
+				<th rowspan="2">Phone</th>
+				<th rowspan="2">Website</th>
+				<th colspan="3">Company</th>
+			</tr>
+			<tr>
+				<!-- Address -->
+				<th>Street</th>
+				<th>Suite</th>
+				<th>City</th>
+				<th>Zipcode</th>
+				<th>lat</th>
+				<th>lng</th>
+				
+				<!-- Company -->
+				<th>Name</th>
+				<th>Catch Phrase</th>
+				<th>BS</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr v-for="user in users">
+				<td>{{user.id}}</td>
+				<td>{{user.name}}</td>
+				<td>{{user.username}}</td>
+				<td v-html="mailto(user.name,user.email)"></td>
+				<template v-if="user.address">
+					<td>{{user.address.street}}</td>
+					<td>{{user.address.suite}}</td>
+					<td>{{user.address.city}}</td>
+					<td>{{user.address.zipcode}}</td>
+					<td>{{user.address.geo.lat}}</td>
+					<td>{{user.address.geo.lng}}</td>
+				</template>
+				<template v-else>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+				</template>
+				<td>{{user.phone}}</td>
+				<td>{{user.website}}</td>
+				<template v-if="user.company">
+					<td>{{user.company.name}}</td>
+					<td>{{user.company.catchPhrase}}</td>
+					<td>{{user.company.bs}}</td>
+				</template>
+				<template v-else>
+					<td></td>
+					<td></td>
+					<td></td>
+				</template>
+			</tr>
+		</tbody>
+	</table>
 	<div :class="{load:true,loading:load.loading}"><span class="gradient">{{load.text}}</span><span class="shadow">{{load.text}}</span></div>
 </div>
 </template>
 
 <script>
 export default {
-	name: 'HelloWorld',
+	name: 'Ajax',
 	data() {
 		return {
-			title: 'Hello world!',
 			users: window.users||[],
 			usersLoaded: window.usersLoaded,
 			load: {
@@ -128,41 +125,41 @@ export default {
 		}
 	},
 	beforeCreate: function() {
-		console.log('HelloWorld - beforeCreate');
+		console.log('Ajax - beforeCreate');
 	},
 	created: function() {
-		console.log('HelloWorld - created');
+		console.log('Ajax - created');
 		
 		if(!window.usersLoaded)
 			this.refresh();
 	},
 	beforeMount: function() {
-		console.log('HelloWorld - beforeMount');
+		console.log('Ajax - beforeMount');
 	},
 	mounted: function() {
-		console.log('HelloWorld - mounted');
+		console.log('Ajax - mounted');
 	},
 	beforeUpdate: function() {
-		console.log('HelloWorld - beforeUpdate');
+		console.log('Ajax - beforeUpdate');
 	},
 	updated: function() {
-		console.log('HelloWorld - updated');
+		console.log('Ajax - updated');
 	},
 	beforeDestroy: function() {
-		console.log('HelloWorld - beforeDestroy');
+		console.log('Ajax - beforeDestroy');
 	},
 	destroyed: function() {
-		console.log('HelloWorld - destroyed');
+		console.log('Ajax - destroyed');
 	}
 }
 </script>
 
 <style>
 .hello {padding:10px;position:relative;}
-.hello h1{margin:-10px -10px 0;font-size:18px;line-height:50px;text-align:center;background:#ddd;}
 .hello h3{margin:10px 0 5px;font-size:14px;}
 .hello a{text-decoration:none;}
 .hello a:hover{color:#F20;}
+.hello table{min-width:100%;}
 .hello table,.hello th,.hello td{border:1px #ccc solid;border-collapse:collapse;padding:5px;white-space:nowrap;}
 .hello>.load{display:none;position:absolute;left:0;top:0;width:100%;height:100%;z-index:1;overflow:hidden;background:rgba(0,0,0,0.5);}
 .hello>.load>span{position:absolute;left:50%;top:50%;margin-left:-2em;margin-top:-0.5em;z-index:2;font-size:60px;font-weight:bold;-webkit-animation: rotateplane 2s infinite ease-in-out;animation: rotateplane 1.2s infinite ease-in-out;}

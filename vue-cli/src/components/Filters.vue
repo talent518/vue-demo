@@ -1,6 +1,6 @@
 <template>
-	<div class="m-tasks">
-		<h1>My Tasks</h1>
+	<div class="m-filters">
+		<h1>Filters</h1>
 		<input type="text" v-model="keyword" placeholder="Please input keyword!" />
 		<p class="filter">
 			<span @click="selectAll" :class="{actived:status.all && type.all && removed.all}">All</span>
@@ -26,8 +26,8 @@
 					<th class="type">Type</th>
 				</tr>
 			</thead>
-			<tbody id='j-tasks-tbody'>
-				<tr v-for="(task,id) in tasks" v-if="filter(task)" :class="{deleted:task.removed}">
+			<tbody id='j-filters-tbody'>
+				<tr v-for="(task,id) in filters" v-if="filter(task)" :class="{deleted:task.removed}">
 					<td class="chk"><input type="checkbox" :checked="task.checked" v-model="task.checked" /></td>
 					<td class="id">{{id+1}}</td>
 					<td class="name">{{task.name}}</td>
@@ -43,7 +43,7 @@
 		</table>
 		<button @click="deleteSelected"><template v-if="removed.all">Delete/Restore</template><template v-else-if="removed.deleted">Restore</template><template v-else>Delete</template> selected</button>
 		&nbsp; - &nbsp;
-		Show record count is <span id="j-tasks-shows"></span>
+		Show record count is <span id="j-filters-shows"></span>
 	</div>
 </template>
 
@@ -65,31 +65,31 @@ function hasTrue(o, v) {
 }
 
 export default {
-	name: 'Tasks',
+	name: 'Filters',
 	data() {
-		let tasks = [
-			{name:'Task01',status:'unstart',type:'buy',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task02',status:'unstart',type:'recv',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task03',status:'unstart',type:'sell',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task04',status:'unstart',type:'sent',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task05',status:'unstart',type:'normal',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task06',status:'running',type:'buy',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task07',status:'running',type:'recv',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task08',status:'running',type:'sell',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task09',status:'running',type:'sent',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task10',status:'running',type:'normal',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task11',status:'completed',type:'buy',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task12',status:'completed',type:'recv',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task13',status:'completed',type:'sell',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task14',status:'completed',type:'sent',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task15',status:'completed',type:'normal',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task16',status:'suspend',type:'buy',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task17',status:'suspend',type:'recv',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task18',status:'suspend',type:'sell',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task19',status:'suspend',type:'sent',checked:false,removed:false,rnd:Math.random()},
-			{name:'Task20',status:'suspend',type:'normal',checked:false,removed:false,rnd:Math.random()},
+		let filters = [
+			{name:'Filter01',status:'unstart',type:'buy',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter02',status:'unstart',type:'recv',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter03',status:'unstart',type:'sell',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter04',status:'unstart',type:'sent',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter05',status:'unstart',type:'normal',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter06',status:'running',type:'buy',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter07',status:'running',type:'recv',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter08',status:'running',type:'sell',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter09',status:'running',type:'sent',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter10',status:'running',type:'normal',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter11',status:'completed',type:'buy',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter12',status:'completed',type:'recv',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter13',status:'completed',type:'sell',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter14',status:'completed',type:'sent',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter15',status:'completed',type:'normal',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter16',status:'suspend',type:'buy',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter17',status:'suspend',type:'recv',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter18',status:'suspend',type:'sell',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter19',status:'suspend',type:'sent',checked:false,removed:false,rnd:Math.random()},
+			{name:'Filter20',status:'suspend',type:'normal',checked:false,removed:false,rnd:Math.random()},
 		];
-		tasks.sort(function(a,b) {
+		filters.sort(function(a,b) {
 			if(a.rnd>b.rnd)
 				return 1;
 			else if(a.rnd == b.rnd)
@@ -98,7 +98,7 @@ export default {
 				return -1;
 		});
 		return {
-			tasks,
+			filters,
 			isSelectedAll: false,
 			status: {all:true,unstart:false,running:false,completed:false,suspend:false},
 			type: {all:true,buy:false,recv:false,sell:false,sent:false,normal:false},
@@ -130,7 +130,7 @@ export default {
 		},
 		deleteSelected: function() {
 			let self = this;
-			this.tasks.forEach(function(task) {
+			this.filters.forEach(function(task) {
 				if(!task.checked) return;
 				
 				if(task.removed)
@@ -143,15 +143,15 @@ export default {
 			this.isSelectedAll = false;
 		},
 		updateShows: function() {
-			let n = document.getElementById('j-tasks-tbody').children.length;
-			document.getElementById('j-tasks-shows').innerHTML = n;
+			let n = document.getElementById('j-filters-tbody').children.length;
+			document.getElementById('j-filters-shows').innerHTML = n;
 			this.$refs.noneData.style = n ? 'display:none' : '';
 		}
 	},
 	watch: {
 		isSelectedAll: function(newval) {
 			let self = this;
-			this.tasks.forEach(function(v) {
+			this.filters.forEach(function(v) {
 				if(self.filter(v)) v.checked = newval;
 			});
 		}
@@ -166,18 +166,18 @@ export default {
 </script>
 
 <style>
-.m-tasks{padding:10px;}
-.m-tasks>h1{margin-bottom:10px;}
-.m-tasks>.filter{margin-bottom:10px;}
-.m-tasks>.filter>*{cursor:pointer;}
-.m-tasks>.filter>.actived{font-weight:bold;color:red;}
-.m-tasks table{margin-bottom:10px;min-width:400px;}
-.m-tasks table,.m-tasks th,.m-tasks td{padding:5px;border:1px #ccc solid;border-collapse:collapse;}
-.m-tasks table tr>.chk{width:10px;}
-.m-tasks table tr>.id{width:10px;white-space:nowrap;}
-.m-tasks table tr>.name{}
-.m-tasks table tr>.status{width:4em;}
-.m-tasks table tr>.type{width:3em;}
-.m-tasks tr.deleted{color:#666;}
-.m-tasks tr.deleted>.name{text-decoration:line-through black;}
+.m-filters{padding:10px;}
+.m-filters>h1{margin-bottom:10px;}
+.m-filters>.filter{margin-bottom:10px;}
+.m-filters>.filter>*{cursor:pointer;}
+.m-filters>.filter>.actived{font-weight:bold;color:red;}
+.m-filters table{margin-bottom:10px;min-width:400px;}
+.m-filters table,.m-filters th,.m-filters td{padding:5px;border:1px #ccc solid;border-collapse:collapse;}
+.m-filters table tr>.chk{width:10px;}
+.m-filters table tr>.id{width:10px;white-space:nowrap;}
+.m-filters table tr>.name{}
+.m-filters table tr>.status{width:4em;}
+.m-filters table tr>.type{width:3em;}
+.m-filters tr.deleted{color:#666;}
+.m-filters tr.deleted>.name{text-decoration:line-through black;}
 </style>
