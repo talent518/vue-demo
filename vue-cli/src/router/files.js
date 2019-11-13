@@ -1,13 +1,13 @@
-import FilesIndex from '@/components/FilesIndex';
-import FilesImage from '@/components/FilesImage';
-import FilesCss from '@/components/FilesCss';
-import FilesJs from '@/components/FilesJs';
-import FilesId from '@/components/FilesId';
+import Index from '@/components/files/Index';
+import Image from '@/components/files/Image';
+import Css from '@/components/files/Css';
+import Js from '@/components/files/Js';
+import Id from '@/components/files/Id';
 
 export default [
-	{path:'', component:FilesIndex},
-	{path:'image', component:FilesImage},
-	{path:'css', component:FilesCss},
-	{path:'js', component:FilesJs},
-	{path:':id', component:FilesId},
+	{path:'', component:Index},
+	{path:'image', component:Image},
+	{path:'css', component:Css},
+	{path:'js', component:Js},
+	{path:':id', component:Id},
 ];

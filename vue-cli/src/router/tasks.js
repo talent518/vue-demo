@@ -3,10 +3,10 @@ import VueRouter from 'vue-router';
 
 Vue.use(VueRouter);
 
-import All from '@/components/TasksVuexAll';
-import Unstart from '@/components/TasksVuexUnstart';
-import Running from '@/components/TasksVuexRunning';
-import Completed from '@/components/TasksVuexCompleted';
+import All from '@/components/tasks-vuex/All';
+import Unstart from '@/components/tasks-vuex/Unstart';
+import Running from '@/components/tasks-vuex/Running';
+import Completed from '@/components/tasks-vuex/Completed';
 
 export default [
 	{path:'', component:All},

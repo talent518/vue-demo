@@ -32,7 +32,7 @@ export default {
 			default: 'User list:'
 		},
 		sexs: {
-			type: Object & Array,
+			type: Array,
 			default: () => {
 				return ['Woman', 'Man'];
 			}

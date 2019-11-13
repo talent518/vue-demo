@@ -8,9 +8,9 @@
 </template>
 
 <script>
-import Header from './Header';
-import Footer from './Footer';
-import Users from './Users';
+import Header from './home/Header';
+import Footer from './home/Footer';
+import Users from './home/Users';
 
 export default {
 	name: 'Home',
