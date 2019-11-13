@@ -69,6 +69,7 @@
 			</tbody>
 		</table>
 	</template>
+	<div :class="{load:true,loading:load.loading}"><span class="gradient">{{load.text}}</span><span class="shadow">{{load.text}}</span></div>
 </div>
 </template>
 
@@ -78,8 +79,15 @@ export default {
 	data() {
 		return {
 			title: 'Hello world!',
-			users: [],
-			usersLoaded: false
+			users: window.users||[],
+			usersLoaded: window.usersLoaded,
+			load: {
+				loading:false,
+				texts: ['Loading .','Loading ..','Loading ...'],
+				i: 0,
+				text: 'Loading .',
+				timer: 0
+			}
 		}
 	},
 	methods: {
@@ -87,9 +95,23 @@ export default {
 			return (name === undefined || email === undefined) ? '&nbsp;' : '<a href="mailto:'+name+' &lt;'+email+'&gt;">'+email+'</a>';
 		},
 		refresh: function() {
+			this.load.loading = true;
+			this.load.timer = window.setInterval(function(){
+				if(++this.load.i == this.load.texts.length)
+					this.load.i = 0;
+				this.load.text = this.load.texts[this.load.i];
+			}.bind(this), 300);
 			this.$http.get('http://jsonplaceholder.typicode.com/users').then((data) => {
-				this.users = data.body;
-				this.usersLoaded = true;
+				// setTimeout(function(){
+				window.clearInterval(this.load.timer);
+				this.load.i = 0;
+				this.load.text = 'Loading .';
+				this.load.timer = 0;
+				this.load.loading = false;
+				// }.bind(this),10000);
+				
+				this.users = window.users = data.body;
+				this.usersLoaded = window.usersLoaded = true;
 			});
 		}
 	},
@@ -111,8 +133,8 @@ export default {
 	created: function() {
 		console.log('HelloWorld - created');
 		
-		this.refresh();
-		console.log(this);
+		if(!window.usersLoaded)
+			this.refresh();
 	},
 	beforeMount: function() {
 		console.log('HelloWorld - beforeMount');
@@ -136,10 +158,30 @@ export default {
 </script>
 
 <style>
-.hello {padding:10px;}
+.hello {padding:10px;position:relative;}
 .hello h1{margin:-10px -10px 0;font-size:18px;line-height:50px;text-align:center;background:#ddd;}
 .hello h3{margin:10px 0 5px;font-size:14px;}
 .hello a{text-decoration:none;}
 .hello a:hover{color:#F20;}
 .hello table,.hello th,.hello td{border:1px #ccc solid;border-collapse:collapse;padding:5px;white-space:nowrap;}
+.hello>.load{display:none;position:absolute;left:0;top:0;width:100%;height:100%;z-index:1;overflow:hidden;background:rgba(0,0,0,0.5);}
+.hello>.load>span{position:absolute;left:50%;top:50%;margin-left:-2em;margin-top:-0.5em;z-index:2;font-size:60px;font-weight:bold;-webkit-animation: rotateplane 2s infinite ease-in-out;animation: rotateplane 1.2s infinite ease-in-out;}
+.hello>.load>span.shadow{z-index:1;padding:2px;color:#ddd;/* color:rgba(0,0,0,0.6); */}
+.hello>.load>span.gradient{background: -webkit-gradient(linear,left top,right bottom,from(#FF0000),to(#0000FF));-webkit-background-clip: text;-webkit-text-fill-color: transparent;}
+.hello>.loading{display:flex;}
+
+@keyframes rotateplane {
+	0% {
+		transform: perspective(250px) rotateX(360deg) rotateY(0deg);
+		-webkit-transform: perspective(250px) rotateX(360deg) rotateY(0deg);
+	}
+	50% {
+		transform: perspective(250px) rotateX(0deg) rotateY(0deg);
+		-webkit-transform: perspective(250px) rotateX(0deg) rotateY(0deg);
+	}
+	100% {
+		transform: perspective(250px) rotateX(0deg) rotateY(-360deg);
+		-webkit-transform: perspective(250px) rotateX(0deg) rotateY(-360deg);
+	}
+}
 </style>
