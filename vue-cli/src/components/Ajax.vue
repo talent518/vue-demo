@@ -67,6 +67,10 @@
 			</tr>
 		</tbody>
 	</table>
+	<h3>Tables</h3>
+	<ul>
+		<li v-for="table in tables">{{table}}</li>
+	</ul>
 	<div :class="{load:true,loading:load.loading}"><span class="gradient">{{load.text}}</span><span class="shadow">{{load.text}}</span></div>
 </div>
 </template>
@@ -84,7 +88,8 @@ export default {
 				i: 0,
 				text: 'Loading .',
 				timer: 0
-			}
+			},
+			tables: []
 		}
 	},
 	methods: {
@@ -138,6 +143,10 @@ export default {
 	},
 	mounted: function() {
 		console.log('Ajax - mounted');
+		
+		this.$http.get('/api/tables').then((data)=>{
+			this.tables = data.body;
+		});
 	},
 	beforeUpdate: function() {
 		console.log('Ajax - beforeUpdate');
@@ -166,6 +175,7 @@ export default {
 .hello>.load>span.shadow{z-index:1;padding:2px;color:#ddd;/* color:rgba(0,0,0,0.6); */}
 .hello>.load>span.gradient{background: -webkit-gradient(linear,left top,right bottom,from(#FF0000),to(#0000FF));-webkit-background-clip: text;-webkit-text-fill-color: transparent;}
 .hello>.loading{display:flex;}
+.hello>ul{margin:0;padding-left:2em;}
 
 @keyframes rotateplane {
 	0% {
