@@ -19,6 +19,10 @@
 		<label :class="{path:match_path}"><input type="checkbox" v-model="match_path"/> path</label>
 		<button @click="reverseSort">Reverse asc/desc</button>
 		<button @click="sorts.reverse();search()">Reverse order</button>
+		<span>Total is {{pages}} pages, current page is</span>
+		<select v-model="page" @change="search">
+			<option v-for="i in pages" :selected="i==page" :value="i-1">{{i}}</option>
+		</select>
 	</p>
 	<p class="warn">Press down <b>Ctrl</b> key and click table head to add order column, press down <b>Shift</b> key and click table head to only in between asc and desc for switch.</p>
 	<p v-html="message"></p>
@@ -113,8 +117,11 @@ const ElasticSearch = {
 	match_phrase: true,
 	match_name: true,
 	match_path: false,
-	confirmReindex: false
+	confirmReindex: false,
+	page: 0,
+	pages: 1
 };
+const PSIZE = 100;
 const Units = ['','K','M','G','T'];
 const Sizes = [];
 for(let i=0; i<5; i++) {
@@ -181,7 +188,7 @@ export default {
 		search() {
 			this.message = 'Search ...';
 			this.setLoading(true);
-			let params = {from:0, size:100, query:{bool:{must:[],should:[]}}, sort:[]};
+			let params = {from:this.page*PSIZE, size:PSIZE, query:{bool:{must:[],should:[]}}, sort:[]};
 			if(this.type !== 'all') {
 				params.query.bool.must.push({
 					term:{
@@ -309,6 +316,9 @@ export default {
 				this.setLoading(false);
 				this.files = body.hits;
 				this.total = body.total;
+				this.pages = Math.max(Math.ceil(this.total.value/PSIZE), 1);
+				if(this.page >= this.pages)
+					this.page = this.pages - 1;
 				
 				let aggs = [];
 				body.aggs.forEach((v)=>{
@@ -413,6 +423,7 @@ export default {
 .m-elastic-search>p.options>label.highlight{color:#F60;}
 .m-elastic-search>p.options>button{margin-right:10px;padding:0 5px;border:1px #999 solid;border-radius:3px;background:#ccc;cursor:pointer;outline:none;}
 .m-elastic-search>p.options>button:focus{font-weight:bold;}
+.m-elastic-search>p.options>select{border:1px #999 solid;border-radius:3px;background:white;}
 
 .m-elastic-search table{min-width:100%;}
 .m-elastic-search table,.m-elastic-search th,.m-elastic-search td{border:1px #ccc solid;border-collapse:collapse;padding:5px;white-space:nowrap;}
