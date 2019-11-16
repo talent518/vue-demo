@@ -19,7 +19,7 @@
 		<label :class="{path:match_path}"><input type="checkbox" v-model="match_path"/> path</label>
 		<button @click="reverseSort">Reverse asc/desc</button>
 		<button @click="sorts.reverse();search()">Reverse order</button>
-		<span>Total is {{pages}} pages, current page is</span>
+		<span>Total is <b>{{pages}}</b> pages, current page is <b>{{page+1}}</b>. Switch:</span>
 		<select v-model="page" @change="search">
 			<option v-for="i in pages" :selected="i==page" :value="i-1">{{i}}</option>
 		</select>
@@ -317,8 +317,10 @@ export default {
 				this.files = body.hits;
 				this.total = body.total;
 				this.pages = Math.max(Math.ceil(this.total.value/PSIZE), 1);
-				if(this.page >= this.pages)
+				if(this.page >= this.pages) {
 					this.page = this.pages - 1;
+					this.search();
+				}
 				
 				let aggs = [];
 				body.aggs.forEach((v)=>{
