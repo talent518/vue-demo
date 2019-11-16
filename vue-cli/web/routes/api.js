@@ -1,6 +1,7 @@
-var express = require('express');
-var router = express.Router();
-var db = require('../models/db');
+const express = require('express');
+const router = express.Router();
+const db = require('../models/db');
+const elastic = require('../models/elastic');
 
 /* GET users listing. */
 router.get('/', function(req, res, next) {
@@ -10,5 +11,14 @@ router.get('/', function(req, res, next) {
 router.get('/tables', function(req, res, next) {
 	db.query('SHOW TABLES', db.column(0, req, res, next));
 });
+
+// index progress
+router.get('/files', elastic.progress);
+
+// create index and make document
+router.post('/files', elastic.make);
+
+// search index
+router.put('/files', elastic.search);
 
 module.exports = router;
