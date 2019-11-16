@@ -189,7 +189,10 @@ module.exports = {
 			}
 		}).then(({body})=>{
 			var count = body.count;
-			
+			if(req.body.from > 0 && req.body.from >= count) { // fix from >= count of question.
+				let pages = Math.max(1, Math.ceil(count/req.body.size));
+				req.body.from = (pages - 1) * req.body.size;
+			}
 			client.search({
 				index: 'vue-cli',
 				body: req.body

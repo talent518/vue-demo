@@ -319,7 +319,6 @@ export default {
 				this.pages = Math.max(Math.ceil(this.total.value/PSIZE), 1);
 				if(this.page >= this.pages) {
 					this.page = this.pages - 1;
-					this.search();
 				}
 				
 				let aggs = [];
