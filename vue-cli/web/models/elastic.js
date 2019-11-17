@@ -2,12 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
 
-const { Client } = require('@elastic/elasticsearch');
-const client = new Client(require('../config.elastic'));
+const config = require('../config.elastic');
 
-const SCANDIR = path.join(__dirname, '../../'), SCANROOT = '';
-const FORMAT = 'YYYY-MM-DD HH:mm:ss';
-const TASKS = 100;
+const { Client } = require('@elastic/elasticsearch');
+const client = new Client(config.elastic);
+
 var ID = false, Files = false, Tasks = false, Taskings = false;
 const initTask = function(res, next) {
 	if(ID !== false || Files !== false || Tasks !== false || Taskings !== false) {
@@ -22,7 +21,7 @@ const initTask = function(res, next) {
 };
 const addTask = function(callback) {
 	if(Tasks === false) { // ended skip
-	} else if(Taskings < TASKS) {
+	} else if(Taskings < config.tasks) {
 		++Taskings;
 		callback();
 		// console.log('addTask', Tasks.length, Taskings);
@@ -36,6 +35,7 @@ const nextTask = function(err, res, next) {
 	} else if(err) { // catch completed and response
 		console.log(err);
 		
+		res.status(err.status || 500);
 		res.json(err.message);
 		
 		ID = Files = Tasks = Taskings = false;
@@ -66,7 +66,7 @@ const makeDocument = function(scan, dir, pid, res, next) {
 				var $dir = path.join(dir,v);
 				
 				addTask(()=>{
-					fs.stat($scan, (err, st)=>{
+					fs.lstat($scan, (err, st)=>{
 						if(err) {
 							nextTask(err, res, next);
 							return;
@@ -108,10 +108,10 @@ const makeDocument = function(scan, dir, pid, res, next) {
 								gid: st.gid,
 								dev: st.dev,
 								ino: st.ino,
-								atime: moment(st.atime).format(FORMAT),
-								mtime: moment(st.mtime).format(FORMAT),
-								ctime: moment(st.ctime).format(FORMAT),
-								birthtime: moment(st.birthtime).format(FORMAT)
+								atime: moment(st.atime).format(config.timeFormat),
+								mtime: moment(st.mtime).format(config.timeFormat),
+								ctime: moment(st.ctime).format(config.timeFormat),
+								birthtime: moment(st.birthtime).format(config.timeFormat)
 							}
 						}).then((body)=>{
 							if(Files === false) return;
@@ -160,7 +160,9 @@ const makeIndex = function(res, next) {
 			}
 		}
 	}).then((body)=>{
-		makeDocument(SCANDIR, SCANROOT, 0, res, next);
+		Object.keys(config.scanDirs).forEach((k)=>{
+			makeDocument(config.scanDirs[k], k, 0, res, next);
+		});
 	}).catch(({body})=>{
 		res.status(body.status);
 		res.json(body.error);

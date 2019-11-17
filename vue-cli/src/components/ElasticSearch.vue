@@ -350,13 +350,17 @@ export default {
 					if(b)
 						this.message = 'Scaned to <b>' + body.files + '</b> files or directories, <b>' + body.tasks + '</b> tasks, <b>' + body.taskings + '</b> taskings';
 				}).catch((err)=>{
-					console.log(err);
+					this.message = err.message;
 					
+					clearInterval(timer);
 					this.setLoading(false);
 				});
 			}.bind(this),1000);
 			this.$http.post('api/files', {}).then(({body})=>{
-				if(typeof(body) === 'string') return;
+				if(typeof(body) === 'string') {
+					this.message = body;
+					return;
+				}
 				
 				clearInterval(timer);
 				this.setLoading(false);
