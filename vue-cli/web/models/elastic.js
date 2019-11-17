@@ -33,10 +33,16 @@ const addTask = function(callback) {
 const nextTask = function(err, res, next) {
 	if(Tasks === false) { // ended skip
 	} else if(err) { // catch completed and response
-		console.log(err);
-		
-		res.status(err.status || 500);
-		res.json(err.message);
+		if(err.body) {
+			console.log(err.body.error, err);
+			
+			res.status(err.body.status || 500);
+			res.json(err.body.error.message || err.message);
+		} else {
+			console.log(err);
+			res.status(err.status || 500);
+			res.json(err.message);
+		}
 		
 		ID = Files = Tasks = Taskings = false;
 	} else if(Tasks.length) {
@@ -117,8 +123,19 @@ const makeDocument = function(scan, dir, pid, res, next) {
 							if(Files === false) return;
 							
 							Files++;
-							if(st.isDirectory()) makeDocument($scan, $dir, id, res, next);
-							nextTask(false, res, next);
+							if(st.isDirectory()) {
+								fs.access($scan, fs.constants.R_OK, (err)=>{
+									if(err) {
+										console.error(err);
+									} else {
+										makeDocument($scan, $dir, id, res, next);
+									}
+									
+									nextTask(false, res, next);
+								});
+							} else {
+								nextTask(false, res, next);
+							}
 						}).catch((err)=>{
 							nextTask(err, res, next);
 						});
