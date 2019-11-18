@@ -19,6 +19,11 @@ const reTask = {
 	time: 0,
 	status: 0,
 	err: false,
+	lines: [],
+	log(...args) {
+		this.lines.push(args.join(' '));
+		if(this.lines.length>config.lines) this.lines.shift();
+	},
 	genId() {
 		return ++this.id;
 	},
@@ -148,6 +153,7 @@ const createDocument = function($scan, $dir, name, dir, pid, $id) {
 			if(reTask.running === false) return;
 
 			console.info(type, $id, pid, mode.toString(8), $dir);
+			reTask.log(type, $id, pid, mode.toString(8), $dir);
 			
 			reTask.ok();
 			if(st.isDirectory()) {
@@ -247,11 +253,13 @@ module.exports = {
 		}
 		res.json({
 			running: reTask.running,
-			files: reTask.files,
-			tasks: reTask.tasks.dirs.length + reTask.tasks.files.length,
-			taskings: reTask.runs,
+			scans: reTask.files,
+			dirs: reTask.tasks.dirs.length,
+			files: reTask.tasks.files.length,
+			runs: reTask.runs,
 			seconds: reTask.running ? (Date.now() - reTask.time) / 1000 : 0,
-			err: reTask.err
+			err: reTask.err,
+			lines: reTask.lines
 		});
 	},
 	make: function(req, res) {

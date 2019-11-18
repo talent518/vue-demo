@@ -11,5 +11,6 @@ module.exports = {
 		home: process.env.HOME
 	},
 	tasks: 100,
-	timeFormat: 'YYYY-MM-DD HH:mm:ss'
+	timeFormat: 'YYYY-MM-DD HH:mm:ss',
+	lines: 100
 };

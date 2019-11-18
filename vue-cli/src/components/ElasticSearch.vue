@@ -66,7 +66,7 @@
 			</tr>
 		</tbody>
 	</table>
-	<div :class="{load:true,loading:loading}"><span class="msg message" v-html="message"></span><span class="msg shadow" v-html="message"></span><span class="anim gradient">↺</span><span class="anim shadow">↺</span></div>
+	<div :class="{load:true,loading:loading}"><span class="msg message" v-html="loadtxt"></span><span class="msg shadow" v-html="loadtxt"></span><span class="anim gradient">↺</span><span class="anim shadow">↺</span><span ref="lines" class="lines"></span></div>
 	<div :class="{confirmed:true,show:confirmReindex}"><div><h1>Reindex confirm</h1><p class="message">Are you sure you want to rebuild the file and directory indexes?</p><p class="btn"><button @click="index" class="confirm">Confirm</button><button @click="confirmReindex=false" class="cancel">Cancel</button></p></div></div>
 </div>
 </template>
@@ -90,7 +90,8 @@ const ElasticSearch = {
 		LNK: 'Symbolic link',
 		SOCK: 'Socket'
 	},
-	loading:false,
+	loading: false,
+	loadtxt: '',
 	message: '',
 	sort: {
 		name: 'asc',
@@ -340,6 +341,7 @@ export default {
 			this.confirmReindex = false;
 			this.message = 'Reindexing ...';
 			this.setLoading(true);
+			this.$refs.lines.innerHTML = '';
 			var progress = false, running = true;
 			this.timer = setInterval(function() {
 				if(progress) return;
@@ -349,11 +351,13 @@ export default {
 					let b = body.running;
 					this.setLoading(b);
 					if(b) {
-						this.message = 'Scaned to <b>' + body.files + '</b> files or directories, <b>' + body.tasks + '</b> tasks, <b>' + body.taskings + '</b> taskings, <b>' + body.seconds + '</b> seconds';
+						this.loadtxt = 'Scaned to <b>' + body.scans + '</b> files or directories.<br/>Running state is <b>' + body.runs + '</b> runs, <b>' + body.seconds + '</b> seconds.<br/>In the queue <b>' + body.dirs + '</b> dirs, <b>' + body.files + '</b> files';
+						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories. In the queue <b>' + body.dirs + '</b> dirs, <b>' + body.files + '</b> files. Running state is <b>' + body.runs + '</b> runs, <b>' + body.seconds + '</b> seconds';
 					} else {
 						clearInterval(this.timer);
-						this.message = 'Scaned to <b>' + body.files + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
+						this.message = this.loadtxt = 'Scaned to <b>' + body.scans + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
 					}
+					this.$refs.lines.innerHTML = body.lines.slice(-50).join('<br/>');
 				}).catch((err)=>{
 					this.message = err.message;
 					
@@ -449,28 +453,31 @@ export default {
 .m-elastic-search>p.options>button{margin-right:10px;padding:0 5px;border:1px #999 solid;border-radius:3px;background:#ccc;cursor:pointer;outline:none;}
 .m-elastic-search>p.options>button:focus{font-weight:bold;}
 .m-elastic-search>p.options>select{border:1px #999 solid;border-radius:3px;background:white;}
+.m-elastic-search>p>br{content:'. ';}
 
-.m-elastic-search table{min-width:100%;}
-.m-elastic-search table,.m-elastic-search th,.m-elastic-search td{border:1px #ccc solid;border-collapse:collapse;padding:5px;white-space:nowrap;}
-.m-elastic-search th{cursor:pointer;}
+.m-elastic-search table{width:100%;}
+.m-elastic-search table,.m-elastic-search th,.m-elastic-search td{border:1px #ccc solid;border-collapse:collapse;padding:5px;}
+.m-elastic-search th{cursor:pointer;white-space:nowrap;}
 .m-elastic-search th:after{content:'↕';color:gray;font-size:bold;margin-left:5px;}
 .m-elastic-search th.asc:after{content:'↥';color:blue;}
 .m-elastic-search th.desc:after{content:'↧';color:green;}
+.m-elastic-search td.name,.m-elastic-search td.path,.m-elastic-search td.link{text-overflow:ellipsis;word-break:break-all;}
 .m-elastic-search th.type,.m-elastic-search td.type{width:30px;white-space:nowrap;text-align:center;}
 .m-elastic-search th.num,.m-elastic-search td.num{width:50px;white-space:nowrap;text-align:right;}
 .m-elastic-search th.time,.m-elastic-search td.time{width:120px;white-space:nowrap;}
 .m-elastic-search td>em{color:#c60;font-style:normal;font-weight:bold;}
 
 .m-elastic-search>.load{display:none;position:fixed;left:0;top:0;width:100%;height:100%;z-index:1;overflow:hidden;background:rgba(0,0,0,0.5);}
-.m-elastic-search>.load>span{position:absolute;top:50%;left:50%;z-index:2;font-weight:bold;}
-.m-elastic-search>.load>span.msg{left:0;width:100%;margin-top:-1.5em;text-align:center;font-size:40px;/* font-weight:normal; */}
+.m-elastic-search>.load>span{position:absolute;top:50%;left:50%;z-index:3;font-weight:bold;}
+.m-elastic-search>.load>span.msg{left:0;width:100%;margin-top:0.3em;text-align:center;font-size:40px;line-height:1.5em;/* font-weight:normal; */}
 .m-elastic-search>.load>span.msg.message{color:white;}
 .m-elastic-search>.load>span.msg.shadow{z-index:1;padding:2px;color:#000;}
 .m-elastic-search>.load>span.msg>b{color:#F60;}
 .m-elastic-search>.load>span.msg.shadow>b{color:#333;}
-.m-elastic-search>.load>span.anim{margin-top:0.1em;margin-left:-0.5em;font-size:100px;animation: spin 0.6s linear infinite;}
-.m-elastic-search>.load>span.anim.shadow{z-index:1;padding:2px;color:#ddd;/* color:rgba(0,0,0,0.6); */}
+.m-elastic-search>.load>span.anim{margin-top:-1.3em;margin-left:-0.5em;font-size:100px;animation: spin 0.6s linear infinite;}
+.m-elastic-search>.load>span.anim.shadow{z-index:2;padding:2px;color:#ddd;/* color:rgba(0,0,0,0.6); */}
 .m-elastic-search>.load>span.anim.gradient{background: -webkit-gradient(linear,left top,right bottom,from(#FF0000),to(#0000FF));-webkit-background-clip: text;-webkit-text-fill-color: transparent;}
+.m-elastic-search>.load>span.lines{z-index:1;left:10px;top:auto;bottom:10px;border:1px #666 solid;border-radius:3px;padding:5px;opacity:0.6;background:#000;color:#fff;font-size:9px;line-height:1.2em;font-weight:normal;}
 .m-elastic-search>.loading{display:block;}
 
 .m-elastic-search>.confirmed{display:none;position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);}
