@@ -7,149 +7,189 @@ const config = require('../config.elastic');
 const { Client } = require('@elastic/elasticsearch');
 const client = new Client(config.elastic);
 
-var ID = false, Files = false, Tasks = false, Taskings = false;
-const initTask = function(res, next) {
-	if(ID !== false || Files !== false || Tasks !== false || Taskings !== false) {
-		res.json('Making document ...');
-		return true;
-	}
-	
-	ID = 0;
-	Files = 0;
-	Tasks = [];
-	Taskings = 0;
-};
-const addTask = function(callback) {
-	if(Tasks === false) { // ended skip
-	} else if(Taskings < config.tasks) {
-		++Taskings;
-		callback();
-		// console.log('addTask', Tasks.length, Taskings);
-	} else {
-		Tasks.push(callback);
-		// console.log('addTask', Tasks.length, Taskings);
-	}
-};
-const nextTask = function(err, res, next) {
-	if(Tasks === false) { // ended skip
-	} else if(err) { // catch completed and response
-		if(err.body) {
-			console.log(err.body.error, err);
-			
-			res.status(err.body.status || 500);
-			res.json(err.body.error.message || err.message);
-		} else {
-			console.log(err);
-			res.status(err.status || 500);
-			res.json(err.message);
+const reTask = {
+	running: false,
+	id: 0,
+	files: 0,
+	tasks: {
+		dirs: [],
+		files: []
+	},
+	runs: 0,
+	time: 0,
+	status: 0,
+	err: false,
+	genId() {
+		return ++this.id;
+	},
+	ok() {
+		return ++this.files;
+	},
+	init(res) {
+		if(this.running) {
+			res.json('Making document ...');
+			return true;
 		}
 		
-		ID = Files = Tasks = Taskings = false;
-	} else if(Tasks.length) {
-		Tasks.pop()();
-		// console.log('nextTask', Tasks.length, Taskings);
-	} else if(--Taskings) { // running ...
-		// console.log('nextTask', Tasks.length, Taskings);
-	} else { // completed and response
-		// console.log('make index complated');
-		
-		res.json(Files);
-		
-		ID = Files = Tasks = Taskings = false;
+		this.running = true;
+		this.id = 0;
+		this.files = 0;
+		this.tasks.dirs.splice(0);
+		this.tasks.files.splice(0);
+		this.runs = 0;
+		this.time = Date.now();
+		this.res = res;
+		this.status = 0;
+		this.err = false;
+	},
+	add(isDir, ...args) {
+		if(this.running === false) { // ended skip
+		} else if(this.runs < config.tasks) {
+			++this.runs;
+			(isDir?makeDocument:createDocument).apply(null, args);
+		} else {
+			if(isDir)
+				this.tasks.dirs.push(args);
+			else
+				this.tasks.files.push(args);
+		}
+	},
+	next(err) {
+		if(this.running === false) { // ended skip
+		} else if(err) { // catch completed and response
+			if(err.body) {
+				console.error('ERROR.end', err.body.error, err);
+				
+				this.status = (err.body.status || 500);
+				this.err = (err.body.error.reason || err.body.error.message || err.message);
+			} else {
+				console.error('ERROR.end', err.error, err);
+				
+				this.status = (err.status || 500);
+				this.err = err.message;
+			}
+			
+			if(this.res) {
+				this.res.status(this.status);
+				this.res.json(this.err);
+			}
+			
+			this.running = false;
+			this.tasks.dirs.splice(0);
+			this.tasks.files.splice(0);
+		} else if(this.tasks.files.length) {
+			createDocument.apply(null, this.tasks.files.pop());
+		} else if(this.tasks.dirs.length) {
+			makeDocument.apply(null, this.tasks.dirs.pop());
+		} else if(--this.runs) { // running ...
+		} else { // completed and response
+			console.log('make index complated, scaned to ' + this.files + ' files or directory');
+			
+			this.status = 200;
+			if(this.res) {
+				this.res.json(this.files);
+			}
+			
+			this.running = false;
+			this.tasks.dirs.splice(0);
+			this.tasks.files.splice(0);
+		}
 	}
 };
-const makeDocument = function(scan, dir, pid, res, next) {
-	addTask(()=>{
-		fs.readdir(scan, (err, files)=>{
-			if(err) {
-				nextTask(err, res, next);
-				return;
+const createDocument = function($scan, $dir, name, dir, pid, $id) {
+	if(reTask.running === false) return;
+	
+	fs.lstat($scan, (err, st)=>{
+		if(err) {
+			reTask.next(pid === 0 ? err : false);
+			return;
+		}
+		if(reTask.running === false) return;
+		
+		let type = 'Unknown';
+		if(st.isFile()) {
+			type = 'REG';
+		} else if(st.isDirectory()) {
+			type = 'DIR';
+		} else if(st.isBlockDevice()) {
+			type = 'BLK';
+		} else if(st.isCharacterDevice()) {
+			type = 'CHR';
+		} else if(st.isFIFO()) {
+			type = 'FIFO';
+		} else if(st.isSocket()) {
+			type = 'SOCK';
+		} else if(st.isSymbolicLink()) {
+			type = 'LNK';
+		}
+		var mode = (st.mode & 07777);
+		client.create({
+			id: $id,
+			index: config.index,
+			body: {
+				pid: pid,
+				name: name,
+				path: dir,
+				link: st.isSymbolicLink() ? fs.readlinkSync($scan) : null,
+				type: type,
+				size: st.size,
+				mode: mode,
+				nlink: st.nlink,
+				uid: st.uid,
+				gid: st.gid,
+				dev: st.dev,
+				ino: st.ino,
+				atime: moment(st.atime).format(config.timeFormat),
+				mtime: moment(st.mtime).format(config.timeFormat),
+				ctime: moment(st.ctime).format(config.timeFormat),
+				birthtime: moment(st.birthtime).format(config.timeFormat)
 			}
-			if(Tasks === false) return;
+		}).then((body)=>{
+			if(reTask.running === false) return;
+
+			console.info(type, $id, pid, mode.toString(8), $dir);
 			
-			files.forEach(function(v,k) {
-				var $scan = path.join(scan, v);
-				var $dir = path.join(dir,v);
-				
-				addTask(()=>{
-					fs.lstat($scan, (err, st)=>{
-						if(err) {
-							nextTask(err, res, next);
-							return;
-						}
-						if(Tasks === false) return;
-						
-						let type = 'Unknown';
-						let id = ++ID;
-						if(st.isFile()) {
-							type = 'REG';
-						} else if(st.isDirectory()) {
-							type = 'DIR';
-						} else if(st.isBlockDevice()) {
-							type = 'BLK';
-						} else if(st.isCharacterDevice()) {
-							type = 'CHR';
-						} else if(st.isFIFO()) {
-							type = 'FIFO';
-						} else if(st.isSocket()) {
-							type = 'SOCK';
-						} else if(st.isSymbolicLink()) {
-							type = 'LNK';
-						}
-						let mode = (st.mode & 07777);
-						console.log(id, pid, $dir, type, mode.toString(8));
-						client.create({
-							id: id,
-							index: 'vue-cli',
-							body: {
-								pid: pid,
-								name: v,
-								path: dir,
-								link: st.isSymbolicLink() ? fs.readlinkSync($scan) : null,
-								type: type,
-								size: st.size,
-								mode: mode,
-								nlink: st.nlink,
-								uid: st.uid,
-								gid: st.gid,
-								dev: st.dev,
-								ino: st.ino,
-								atime: moment(st.atime).format(config.timeFormat),
-								mtime: moment(st.mtime).format(config.timeFormat),
-								ctime: moment(st.ctime).format(config.timeFormat),
-								birthtime: moment(st.birthtime).format(config.timeFormat)
-							}
-						}).then((body)=>{
-							if(Files === false) return;
-							
-							Files++;
-							if(st.isDirectory()) {
-								fs.access($scan, fs.constants.R_OK, (err)=>{
-									if(err) {
-										console.error(err);
-									} else {
-										makeDocument($scan, $dir, id, res, next);
-									}
-									
-									nextTask(false, res, next);
-								});
-							} else {
-								nextTask(false, res, next);
-							}
-						}).catch((err)=>{
-							nextTask(err, res, next);
-						});
-					}); // fs.stat
-				}); // addTask
-			}); // files.forEach
+			reTask.ok();
+			if(st.isDirectory()) {
+				fs.access($scan, fs.constants.R_OK, (err)=>{
+					if(err) {
+						console.error('access directory error', err);
+					} else {
+						reTask.add(true, $scan, $dir, $id);
+					}
+					
+					reTask.next(false);
+				});
+			} else {
+				reTask.next(false);
+			}
+		}).catch((err)=>{
+			console.error('create document error', $id, pid, type, mode.toString(8), $dir);
 			
-			nextTask(false, res, next);
-		}); // fs.readdir
-	}); // addTask
+			reTask.next(err);
+		});
+	}); // fs.stat
 }
-const makeIndex = function(res, next) {
+const makeDocument = function(scan, dir, pid) {
+	if(reTask.running === false) return;
+	
+	fs.readdir(scan, (err, files)=>{
+		if(err) {
+			reTask.next(err);
+			return;
+		}
+		if(reTask.running === false) return;
+		
+		files.forEach(function(name) {
+			reTask.add(false, path.join(scan, name), path.join(dir, name), name, dir, pid, reTask.genId());
+		}); // files.forEach
+		
+		reTask.next(false);
+	}); // fs.readdir
+}
+const makeIndex = function(res) {
 	client.indices.create({
-		index: 'vue-cli',
+		index: config.index,
 		body: {
 			settings: {
 				number_of_shards: 3,
@@ -176,33 +216,56 @@ const makeIndex = function(res, next) {
 				}
 			}
 		}
-	}).then((body)=>{
-		Object.keys(config.scanDirs).forEach((k)=>{
-			makeDocument(config.scanDirs[k], k, 0, res, next);
-		});
-	}).catch(({body})=>{
-		res.status(body.status);
-		res.json(body.error);
+	}).then(({body})=>{
+		if(!body.acknowledged || !body.shards_acknowledged) {
+			console.error('create index error', body);
+			
+			res.json(body);
+		} else {
+			Object.keys(config.scanDirs).forEach((k)=>{
+				reTask.add(false, config.scanDirs[k], '@' + k, k, '@', 0, reTask.genId());
+			});
+		}
+	}).catch((err)=>{
+		console.log(err);
+		
+		if(err.body) {
+			res.status(err.body.status||500);
+			res.json(err.body.error);
+		} else {
+			res.status(err.status||500)
+			res.json(err.message||err);
+		}
 	});
 };
 
 module.exports = {
 	client: client,
-	progress: function(req, res, next) {
-		res.json({files:Files, tasks:Tasks ? Tasks.length : 0, taskings:Taskings});
-	},
-	make: function(req, res, next) {
-		if(initTask(res, next)) return;
-		
-		client.indices.delete({index:'vue-cli'}).then((body)=>{
-			makeIndex(res, next);
-		}).catch((err)=>{
-			makeIndex(res, next);
+	progress: function(req, res) {
+		if(req.query.running !== 'true') {
+			reTask.res = false;
+		}
+		res.json({
+			running: reTask.running,
+			files: reTask.files,
+			tasks: reTask.tasks.dirs.length + reTask.tasks.files.length,
+			taskings: reTask.runs,
+			seconds: reTask.running ? (Date.now() - reTask.time) / 1000 : 0,
+			err: reTask.err
 		});
 	},
-	search: function(req, res, next) {
+	make: function(req, res) {
+		if(reTask.init(res)) return;
+
+		client.indices.delete({index:config.index}).then((body)=>{
+			makeIndex(res);
+		}).catch((err)=>{
+			makeIndex(res);
+		});
+	},
+	search: function(req, res) {
 		client.count({
-			index: 'vue-cli',
+			index: config.index,
 			body: {
 				query: req.body.query
 			}
@@ -213,7 +276,7 @@ module.exports = {
 				req.body.from = (pages - 1) * req.body.size;
 			}
 			client.search({
-				index: 'vue-cli',
+				index: config.index,
 				body: req.body
 			}).then(({body})=>{
 				res.json({

@@ -119,7 +119,8 @@ const ElasticSearch = {
 	match_path: false,
 	confirmReindex: false,
 	page: 0,
-	pages: 1
+	pages: 1,
+	timer: 0
 };
 const PSIZE = 100;
 const Units = ['','K','M','G','T'];
@@ -339,36 +340,49 @@ export default {
 			this.confirmReindex = false;
 			this.message = 'Reindexing ...';
 			this.setLoading(true);
-			var progress = false;
-			var timer = setInterval(function() {
+			var progress = false, running = true;
+			this.timer = setInterval(function() {
 				if(progress) return;
 				progress = true;
-				this.$http.get('api/files').then(({body})=>{
+				this.$http.get('api/files?running=' + running).then(({body})=>{
 					progress = false;
-					let b = body.files !== false && body.tasks !== false && body.taskings !== false;
+					let b = body.running;
 					this.setLoading(b);
-					if(b)
-						this.message = 'Scaned to <b>' + body.files + '</b> files or directories, <b>' + body.tasks + '</b> tasks, <b>' + body.taskings + '</b> taskings';
+					if(b) {
+						this.message = 'Scaned to <b>' + body.files + '</b> files or directories, <b>' + body.tasks + '</b> tasks, <b>' + body.taskings + '</b> taskings, <b>' + body.seconds + '</b> seconds';
+					} else {
+						clearInterval(this.timer);
+						this.message = 'Scaned to <b>' + body.files + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
+					}
 				}).catch((err)=>{
 					this.message = err.message;
 					
-					clearInterval(timer);
+					clearInterval(this.timer);
 					this.setLoading(false);
 				});
 			}.bind(this),1000);
-			this.$http.post('api/files', {}).then(({body})=>{
+			this.$http.post('api/files', {}, {timeout:-1}).then(({body})=>{
+				running = false;
+				
 				if(typeof(body) === 'string') {
 					this.message = body;
 					return;
 				}
 				
-				clearInterval(timer);
+				clearInterval(this.timer);
 				this.setLoading(false);
 				this.message = 'Scaned to <b>' + body + '</b> files or directories';
-			}).catch(({body})=>{
-				clearInterval(timer);
+			}).catch((err)=>{
+				running = false;
+				
+				console.log(err, err.body);
+				
+				if(err.ok === false && err.status === 0) return; // request timeout
+				
+				clearInterval(this.timer);
 				this.setLoading(false);
-				this.message = body;
+				
+				this.message = err.body||err.message;
 			});
 		}
 	},
@@ -400,6 +414,12 @@ export default {
 	},
 	mounted() {
 		this.search();
+	},
+	destroyed() {
+		clearInterval(this.timer);
+		
+		this.loading = false;
+		this.timer = 0;
 	}
 };
 </script>
