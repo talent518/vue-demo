@@ -66,7 +66,7 @@
 			</tr>
 		</tbody>
 	</table>
-	<div :class="{load:true,loading:loading}"><span class="msg message" v-html="loadtxt"></span><span class="msg shadow" v-html="loadtxt"></span><span class="anim gradient">↺</span><span class="anim shadow">↺</span><span ref="lines" class="lines"></span></div>
+	<div :class="{load:true,loading:loading,loadtxt:loadtxt,noloadtxt:!loadtxt}"><span class="msg message" v-html="loadtxt"></span><span class="msg shadow" v-html="loadtxt"></span><span class="anim gradient">↺</span><span class="anim shadow">↺</span><span ref="lines" class="lines" v-show="loadtxt"></span><button v-if="loadtxt" @click="stop">Stop index</button></div>
 	<div :class="{confirmed:true,show:confirmReindex}"><div><h1>Reindex confirm</h1><p class="message">Are you sure you want to rebuild the file and directory indexes?</p><p class="btn"><button @click="index" class="confirm">Confirm</button><button @click="confirmReindex=false" class="cancel">Cancel</button></p></div></div>
 </div>
 </template>
@@ -351,20 +351,27 @@ export default {
 					let b = body.running;
 					this.setLoading(b);
 					if(b) {
-						this.loadtxt = 'Scaned to <b>' + body.scans + '</b> files or directories.<br/>Running state is <b>' + body.runs + '</b> runs, <b>' + body.seconds + '</b> seconds.<br/>In the queue <b>' + body.dirs + '</b> dirs, <b>' + body.files + '</b> files';
-						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories. In the queue <b>' + body.dirs + '</b> dirs, <b>' + body.files + '</b> files. Running state is <b>' + body.runs + '</b> runs, <b>' + body.seconds + '</b> seconds';
+						this.loadtxt = 'Scaned to <b>' + body.scans + '</b> files or directories.<br/>Running state is <b>' + body.runs + '</b> runs, <b>' + body.rdirs + '</b> dirs, <b>' + body.rfiles + '</b> files, <b>' + body.seconds + '</b> seconds.<br/>In the queue <b>' + body.qdirs + '</b> dirs, <b>' + body.qfiles + '</b> files';
+						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories. In the queue <b>' + body.qdirs + '</b> dirs, <b>' + body.qfiles + '</b> files. Running state is <b>' + body.runs + '</b> runs, <b>' + body.rdirs + '</b> dirs, <b>' + body.rfiles + '</b> files, <b>' + body.seconds + '</b> seconds';
 					} else {
 						clearInterval(this.timer);
-						this.message = this.loadtxt = 'Scaned to <b>' + body.scans + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
+						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
+						this.loadtxt = '';
 					}
 					this.$refs.lines.innerHTML = body.lines.slice(-50).join('<br/>');
 				}).catch((err)=>{
-					this.message = err.message;
+					console.log(err, err.body);
+					
+					if(err.ok === false && err.status === 0) {
+						this.message = 'Request timeout or reject';
+					} else {
+						this.message = err.body||err.message;
+					}
 					
 					clearInterval(this.timer);
 					this.setLoading(false);
 				});
-			}.bind(this),1000);
+			}.bind(this),500);
 			this.$http.post('api/files', {}, {timeout:-1}).then(({body})=>{
 				running = false;
 				
@@ -381,12 +388,29 @@ export default {
 				
 				console.log(err, err.body);
 				
-				if(err.ok === false && err.status === 0) return; // request timeout
+				if(err.ok === false && err.status === 0) {
+					this.message = 'Request timeout or reject';
+					return; // request timeout
+				}
 				
 				clearInterval(this.timer);
 				this.setLoading(false);
 				
+				this.loadtxt = '';
 				this.message = err.body||err.message;
+			});
+		},
+		stop() {
+			this.$http.delete('api/files').then(({body})=>{
+				this.message = body;
+			}).catch((err)=>{
+				console.log(err, err.body);
+				
+				if(err.ok === false && err.status === 0) {
+					this.message = 'Request timeout or reject';
+				} else {
+					this.message = err.body||err.message;
+				}
 			});
 		}
 	},
@@ -453,7 +477,6 @@ export default {
 .m-elastic-search>p.options>button{margin-right:10px;padding:0 5px;border:1px #999 solid;border-radius:3px;background:#ccc;cursor:pointer;outline:none;}
 .m-elastic-search>p.options>button:focus{font-weight:bold;}
 .m-elastic-search>p.options>select{border:1px #999 solid;border-radius:3px;background:white;}
-.m-elastic-search>p>br{content:'. ';}
 
 .m-elastic-search table{width:100%;}
 .m-elastic-search table,.m-elastic-search th,.m-elastic-search td{border:1px #ccc solid;border-collapse:collapse;padding:5px;}
@@ -474,10 +497,15 @@ export default {
 .m-elastic-search>.load>span.msg.shadow{z-index:1;padding:2px;color:#000;}
 .m-elastic-search>.load>span.msg>b{color:#F60;}
 .m-elastic-search>.load>span.msg.shadow>b{color:#333;}
-.m-elastic-search>.load>span.anim{margin-top:-1.3em;margin-left:-0.5em;font-size:100px;animation: spin 0.6s linear infinite;}
+.m-elastic-search>.load>span.anim{margin-top:-0.5em;margin-left:-0.5em;font-size:100px;animation: spin 0.6s linear infinite;}
 .m-elastic-search>.load>span.anim.shadow{z-index:2;padding:2px;color:#ddd;/* color:rgba(0,0,0,0.6); */}
 .m-elastic-search>.load>span.anim.gradient{background: -webkit-gradient(linear,left top,right bottom,from(#FF0000),to(#0000FF));-webkit-background-clip: text;-webkit-text-fill-color: transparent;}
-.m-elastic-search>.load>span.lines{z-index:1;left:10px;top:auto;bottom:10px;border:1px #666 solid;border-radius:3px;padding:5px;opacity:0.6;background:#000;color:#fff;font-size:9px;line-height:1.2em;font-weight:normal;}
+.m-elastic-search>.load>span.lines{z-index:1;left:10px;top:auto;bottom:10px;border:1px #666 solid;border-radius:3px;padding:5px;background:rgba(0,0,0,.4);color:#fff;font-size:6px;line-height:1.2em;font-weight:normal;}
+.m-elastic-search>.load>button{position:absolute;right:10px;bottom:10px;font-size:20px;padding:10px 1em;border:1px #999 solid;border-radius:5px;background:#ccc;color:#000;cursor:pointer;}
+.m-elastic-search>.load.loadtxt>span.anim{margin-top:-1.3em;}
+.m-elastic-search>.load.noloadtxt>span.anim{margin-top:-0.7em;}
+.m-elastic-search>.load.noloadtxt>span.msg{margin-top:1em;}
+.m-elastic-search>.load.noloadtxt>span.msg:after{content:'Loading...';}
 .m-elastic-search>.loading{display:block;}
 
 .m-elastic-search>.confirmed{display:none;position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);}

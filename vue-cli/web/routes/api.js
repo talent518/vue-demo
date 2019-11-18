@@ -12,6 +12,9 @@ router.get('/tables', function(req, res, next) {
 	db.query('SHOW TABLES', db.column(0, req, res, next));
 });
 
+// stop index
+router.delete('/files', elastic.stop);
+
 // index progress
 router.get('/files', elastic.progress);
 

@@ -11,17 +11,21 @@ const reTask = {
 	running: false,
 	id: 0,
 	files: 0,
-	tasks: {
-		dirs: [],
-		files: []
-	},
+	qdirs: [],
+	qfiles: [],
 	runs: 0,
+	rdirs: 0,
+	rfiles: 0,
 	time: 0,
 	status: 0,
 	err: false,
 	lines: [],
 	log(...args) {
-		this.lines.push(args.join(' '));
+		let str = args.join(' ');
+		
+		this.lines.push(str);
+		console.log(str);
+		
 		if(this.lines.length>config.lines) this.lines.shift();
 	},
 	genId() {
@@ -39,9 +43,11 @@ const reTask = {
 		this.running = true;
 		this.id = 0;
 		this.files = 0;
-		this.tasks.dirs.splice(0);
-		this.tasks.files.splice(0);
+		this.qdirs.splice(0);
+		this.qfiles.splice(0);
 		this.runs = 0;
+		this.rdirs = 0;
+		this.rfiles = 0;
 		this.time = Date.now();
 		this.res = res;
 		this.status = 0;
@@ -51,17 +57,34 @@ const reTask = {
 		if(this.running === false) { // ended skip
 		} else if(this.runs < config.tasks) {
 			++this.runs;
-			(isDir?makeDocument:createDocument).apply(null, args);
+			if(isDir) {
+				++this.rdirs;
+				makeDocument(...args);
+			} else {
+				++this.rfiles;
+				createDocument(...args);
+			}
 		} else {
-			if(isDir)
-				this.tasks.dirs.push(args);
-			else
-				this.tasks.files.push(args);
+			if(isDir) {
+				this.qdirs.push(args);
+			} else {
+				this.qfiles.push(args);
+			}
 		}
 	},
-	next(err) {
+	next(isDir, err) {
 		if(this.running === false) { // ended skip
-		} else if(err) { // catch completed and response
+			return;
+		}
+		
+		if(typeof(isDir) !== 'boolean') {
+		} else if(isDir) {
+			--this.rdirs;
+		} else {
+			--this.rfiles;
+		}
+		
+		if(err) { // catch completed and response
 			if(err.body) {
 				console.error('ERROR.end', err.body.error, err);
 				
@@ -80,12 +103,17 @@ const reTask = {
 			}
 			
 			this.running = false;
-			this.tasks.dirs.splice(0);
-			this.tasks.files.splice(0);
-		} else if(this.tasks.files.length) {
-			createDocument.apply(null, this.tasks.files.pop());
-		} else if(this.tasks.dirs.length) {
-			makeDocument.apply(null, this.tasks.dirs.pop());
+			this.time = (Date.now() - this.time) / 1000;
+			this.qdirs.splice(0);
+			this.qfiles.splice(0);
+		} else if(this.qfiles.length) {
+			let args = this.qfiles.pop();
+			++this.rfiles;
+			createDocument(...args);
+		} else if(this.qdirs.length) {
+			let args = this.qdirs.pop();
+			++this.rdirs;
+			makeDocument(...args);
 		} else if(--this.runs) { // running ...
 		} else { // completed and response
 			console.log('make index complated, scaned to ' + this.files + ' files or directory');
@@ -96,8 +124,9 @@ const reTask = {
 			}
 			
 			this.running = false;
-			this.tasks.dirs.splice(0);
-			this.tasks.files.splice(0);
+			this.time = (Date.now() - this.time) / 1000;
+			this.qdirs.splice(0);
+			this.qfiles.splice(0);
 		}
 	}
 };
@@ -106,7 +135,7 @@ const createDocument = function($scan, $dir, name, dir, pid, $id) {
 	
 	fs.lstat($scan, (err, st)=>{
 		if(err) {
-			reTask.next(pid === 0 ? err : false);
+			reTask.next(false, pid === 0 ? err : false);
 			return;
 		}
 		if(reTask.running === false) return;
@@ -152,27 +181,27 @@ const createDocument = function($scan, $dir, name, dir, pid, $id) {
 		}).then((body)=>{
 			if(reTask.running === false) return;
 
-			console.info(type, $id, pid, mode.toString(8), $dir);
-			reTask.log(type, $id, pid, mode.toString(8), $dir);
-			
 			reTask.ok();
 			if(st.isDirectory()) {
 				fs.access($scan, fs.constants.R_OK, (err)=>{
 					if(err) {
 						console.error('access directory error', err);
+						reTask.log('ACCESS', $id, pid, mode.toString(8), $dir);
 					} else {
+						reTask.log(type, $id, pid, mode.toString(8), $dir);
 						reTask.add(true, $scan, $dir, $id);
 					}
 					
-					reTask.next(false);
+					reTask.next(false, false);
 				});
 			} else {
-				reTask.next(false);
+				reTask.log(type, $id, pid, mode.toString(8), $dir);
+				reTask.next(false, false);
 			}
 		}).catch((err)=>{
 			console.error('create document error', $id, pid, type, mode.toString(8), $dir);
 			
-			reTask.next(err);
+			reTask.next(false, err);
 		});
 	}); // fs.stat
 }
@@ -181,16 +210,16 @@ const makeDocument = function(scan, dir, pid) {
 	
 	fs.readdir(scan, (err, files)=>{
 		if(err) {
-			reTask.next(err);
+			reTask.next(true, err);
 			return;
 		}
 		if(reTask.running === false) return;
 		
-		files.forEach(function(name) {
+		files.forEach((name)=>{
 			reTask.add(false, path.join(scan, name), path.join(dir, name), name, dir, pid, reTask.genId());
 		}); // files.forEach
 		
-		reTask.next(false);
+		reTask.next(true, false);
 	}); // fs.readdir
 }
 const makeIndex = function(res) {
@@ -247,6 +276,14 @@ const makeIndex = function(res) {
 
 module.exports = {
 	client: client,
+	stop: function(req, res) {
+		if(reTask.running) {
+			reTask.next(null, new Error('stopped'));
+			res.json('stopped');
+		} else {
+			res.json('Not start');
+		}
+	},
 	progress: function(req, res) {
 		if(req.query.running !== 'true') {
 			reTask.res = false;
@@ -254,10 +291,12 @@ module.exports = {
 		res.json({
 			running: reTask.running,
 			scans: reTask.files,
-			dirs: reTask.tasks.dirs.length,
-			files: reTask.tasks.files.length,
+			qdirs: reTask.qdirs.length,
+			qfiles: reTask.qfiles.length,
 			runs: reTask.runs,
-			seconds: reTask.running ? (Date.now() - reTask.time) / 1000 : 0,
+			rdirs: reTask.rdirs,
+			rfiles: reTask.rfiles,
+			seconds: reTask.running ? (Date.now() - reTask.time) / 1000 : reTask.time,
 			err: reTask.err,
 			lines: reTask.lines
 		});
