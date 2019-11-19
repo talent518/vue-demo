@@ -21,16 +21,20 @@ const reTask = {
 	err: false,
 	ws: {},
 	lines: [],
+	_lines: [],
 	timer: 0,
 	log(...args) {
 		let str = args.join(' ');
 		
-		this.lines.push(str);
 		console.log(str);
 		
-		// this.send(str);
-		
+		this.lines.push(str);
 		if(this.lines.length>config.lines) this.lines.shift();
+		
+		this._lines.push(str);
+		if(config.wsMode && this._lines.length == config.lines) {
+			this.send('<p>'+this._lines.splice(0).join('</p><p>')+'</p>');
+		}
 	},
 	genId() {
 		return ++this.id;
@@ -55,15 +59,16 @@ const reTask = {
 	send(data) {
 		data = JSON.stringify(data);
 		Object.keys(this.ws).forEach((k)=>{
-			this.ws[k].send(data);
+			try {
+				this.ws[k].send(data);
+			} catch(e) {}
 		});
 	},
 	_interval() {
-//		this.lines.splice(0).forEach((data)=>{
-//			this.send(data);
-//		});
-		this.send('<p>'+this.lines.splice(0).join('</p><p>')+'</p>');
-		this.send(this.data());
+		if(!config.wsMode || !this.running) this.send('<p>'+this._lines.splice(0).join('</p><p>')+'</p>');
+		let o = this.data();
+		delete o.lines;
+		this.send(o);
 	},
 	init(res) {
 		if(this.running) {

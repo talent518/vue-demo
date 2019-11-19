@@ -18,5 +18,6 @@ module.exports = {
 	tasks: 200,
 	timeFormat: 'YYYY-MM-DD HH:mm:ss',
 	lines: 200,
-	interval: 200
+	interval: 200,
+	wsMode: true 
 };

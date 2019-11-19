@@ -443,7 +443,7 @@ export default {
 					// }
 				} else {
 					if(body.running) {
-						this.loadtxt = 'Scaned to <b>' + body.scans + '</b> files or directories.<br/>Running state is <b>' + body.runs + '</b> runs, <b>' + body.rdirs + '</b> dirs, <b>' + body.rfiles + '</b> files, <b>' + body.seconds + '</b> seconds.<br/>In the queue <b>' + body.qdirs + '</b> dirs, <b>' + body.qfiles + '</b> files';
+						this.loadtxt = 'Scaned to <b>' + body.scans + '</b> files or directories.<br/>Running state is <b>' + body.runs + '</b> runs, <b>' + body.rdirs + '</b> dirs, <b>' + body.rfiles + '</b> files, <b>' + body.seconds + '</b> seconds.<br/>In the queue <b>' + body.qdirs + '</b> dirs, <b>' + body.qfiles + '</b> files<br/>WebSocket';
 						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories. In the queue <b>' + body.qdirs + '</b> dirs, <b>' + body.qfiles + '</b> files. Running state is <b>' + body.runs + '</b> runs, <b>' + body.rdirs + '</b> dirs, <b>' + body.rfiles + '</b> files, <b>' + body.seconds + '</b> seconds';
 					} else {
 						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
