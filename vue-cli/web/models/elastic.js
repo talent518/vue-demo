@@ -347,6 +347,7 @@ module.exports = {
 		} while(id in reTask.ws);
 		
 		reTask.ws[id] = ws;
+		reTask.nws++;
 		
 		ws.send(reTask.running ? '"Running ..."' : '"Runned"');
 		
@@ -365,6 +366,7 @@ module.exports = {
 		ws.on('close', function() {
 			console.log('ws disconnected');
 			
+			reTask.nws--;
 			delete reTask.ws[id];
 		});
 	},
