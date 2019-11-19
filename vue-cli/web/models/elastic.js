@@ -1,3 +1,4 @@
+const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
@@ -21,13 +22,29 @@ const reTask = {
 	err: false,
 	nws: 0,
 	ws: {},
+	errfd: 0,
+	outfd: 0,
 	lines: [],
 	_lines: [],
 	timer: 0,
 	log(...args) {
-		let str = args.join(' ');
+		let str = '[' + moment(Date.now()).format(config.timeFormat) + '] ' + args.join(' ');
 		
-		console.log(str);
+		if(this.outfd) {
+			fs.write(this.outfd, str + os.EOL, (err) => {
+				if(!err) return;
+				
+				console.error('write logFile error', err);
+				fs.close(this.outfd, (err)=>{
+					if(err) console.error('close logFile error', err);
+				});
+				this.outfd = 0;
+				
+				console.log(str);
+			});
+		} else {
+			console.log(str);
+		}
 		
 		this.lines.push(str);
 		if(this.lines.length>config.lines) this.lines.shift();
@@ -37,6 +54,25 @@ const reTask = {
 			if(config.wsMode && this._lines.length == config.lines) {
 				this.send('<p>'+this._lines.splice(0).join('</p><p>')+'</p>');
 			}
+		}
+	},
+	error(...args) {
+		let str = '[' + moment(Date.now()).format(config.timeFormat) + '] ' + args.join(' ');
+		
+		if(this.errfd) {
+			fs.write(this.errfd, str + os.EOL, (err) => {
+				if(!err) return;
+				
+				console.error('write logFile error', err);
+				fs.close(this.errfd, (err)=>{
+					if(err) console.error('close logFile error', err);
+				});
+				this.errfd = 0;
+				
+				console.error(str);
+			});
+		} else {
+			console.error(str);
 		}
 	},
 	genId() {
@@ -86,9 +122,35 @@ const reTask = {
 			return true;
 		}
 		
-		this.timer = setInterval(this._interval.bind(this), config.interval);
+		if(config.errFile) {
+			fs.open(config.errFile, 'w+', (err,fd)=>{
+				if(err) {
+					console.error('open errFile error', err);
+				} else if(this.running) {
+					this.errfd = fd;
+				} else {
+					fs.close(fd, (err)=>{
+						if(err) console.error('close errFile error', err);
+					});
+				}
+			});
+		}
+		if(config.logFile) {
+			fs.open(config.logFile, 'w+', (err,fd)=>{
+				if(err) {
+					console.error('open logFile error', err);
+				} else if(this.running) {
+					this.outfd = fd;
+				} else {
+					fs.close(fd, (err)=>{
+						if(err) console.error('close logFile error', err);
+					});
+				}
+			});
+		}
 		
 		this.running = true;
+		this.timer = setInterval(this._interval.bind(this), config.interval);
 		this.id = 0;
 		this.files = 0;
 		this.qdirs.splice(0);
@@ -135,12 +197,12 @@ const reTask = {
 		
 		if(err) { // catch completed and response
 			if(err.body) {
-				console.error('ERROR.end', err.body.error, err);
+				this.error('ERROR.end', err.body.error, err);
 				
 				this.status = (err.body.status || 500);
 				this.err = (err.body.error.reason || err.body.error.message || err.message);
 			} else {
-				console.error('ERROR.end', err.error, err);
+				this.error('ERROR.end', err.error, err);
 				
 				this.status = (err.status || 500);
 				this.err = err.message;
@@ -165,22 +227,39 @@ const reTask = {
 		} else if(--this.runs) { // running ...
 			return;
 		} else { // completed and response
-			console.log('make index complated, scaned to ' + this.files + ' files or directory');
-			
 			this.status = 200;
 			if(this.res) {
 				this.res.json(this.files);
 			}
+			this.send('Completed');
+		}
+		
+		if(this.errfd) {
+			fs.close(this.errfd, (err)=>{
+				if(err) console.error('close errFile error', err);
+			});
+			this.errfd = 0;
+		}
+		if(this.outfd) {
+			fs.close(this.outfd, (err)=>{
+				if(err) console.error('close logFile error', err);
+			});
+			this.outfd = 0;
 		}
 		
 		clearInterval(this.timer);
 		this.timer = 0;
-		this.running = false;
 		this.time = (Date.now() - this.time) / 1000;
+		this.running = false;
+		
+		this.log('Completed, ' + this.files + ' files, ' + this.time + ' seconds');
+		if(this.err) {
+			this.error(this.files, this.time, this.qdirs, this.qfiles, this.rdirs, this.rfiles, this.err);
+		}
+		
 		this.qdirs.splice(0);
 		this.qfiles.splice(0);
 		this._interval();
-		this.send('Completed');
 	}
 };
 const createDocument = function($scan, $dir, name, dir, pid, $id) {
@@ -238,7 +317,7 @@ const createDocument = function($scan, $dir, name, dir, pid, $id) {
 			if(st.isDirectory()) {
 				fs.access($scan, fs.constants.R_OK, (err)=>{
 					if(err) {
-						console.error('access directory error', err);
+						reTask.error('access directory error', $id, pid, mode.toString(8), $dir, err);
 						reTask.log('ACCESS', $id, pid, mode.toString(8), $dir);
 					} else {
 						reTask.log(type, $id, pid, mode.toString(8), $dir);
@@ -252,8 +331,9 @@ const createDocument = function($scan, $dir, name, dir, pid, $id) {
 				reTask.next(false, false);
 			}
 		}).catch((err)=>{
-			console.error('create document error', $id, pid, type, mode.toString(8), $dir);
+			if(reTask.running === false) return;
 			
+			reTask.error('create document error', $id, pid, type, mode.toString(8), $dir, err);
 			reTask.next(false, err);
 		});
 	}); // fs.stat
@@ -306,8 +386,7 @@ const makeIndex = function() {
 		}
 	}).then(({body})=>{
 		if(!body.acknowledged || !body.shards_acknowledged) {
-			console.error('create index error', body);
-			
+			reTask.error('create index error', body);
 			reTask.next(null, body);
 		} else {
 			Object.keys(config.scanDirs).forEach((k)=>{
@@ -315,8 +394,6 @@ const makeIndex = function() {
 			});
 		}
 	}).catch((err)=>{
-		console.log(err);
-		
 		reTask.next(null, err);
 	});
 };
@@ -353,9 +430,7 @@ module.exports = {
 		
 		deleteIndex(false);
 		
-		ws.on('open', function() {
-			console.log('ws connected');
-		});
+		console.log('ws connected - ' + id + ' - ' + moment(Date.now()).format(config.timeFormat));
 		ws.on('message', function(msg) {
 			if(msg === 'stop') {
 				reTask.next(null, new Error('stopped'));
@@ -364,7 +439,7 @@ module.exports = {
 			console.log('ws', msg);
 		});
 		ws.on('close', function() {
-			console.log('ws disconnected');
+			console.log('ws disconnected - ' + id + ' - ' + moment(Date.now()).format(config.timeFormat));
 			
 			reTask.nws--;
 			delete reTask.ws[id];

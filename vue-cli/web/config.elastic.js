@@ -19,5 +19,7 @@ module.exports = {
 	timeFormat: 'YYYY-MM-DD HH:mm:ss',
 	lines: 200,
 	interval: 200,
-	wsMode: true 
+	wsMode: true,
+	logFile: path.join(__dirname, 'elastic.log'),
+	errFile: path.join(__dirname, 'elastic.err')
 };
