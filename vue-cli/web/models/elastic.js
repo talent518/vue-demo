@@ -19,6 +19,7 @@ const reTask = {
 	time: 0,
 	status: 0,
 	err: false,
+	nws: 0,
 	ws: {},
 	lines: [],
 	_lines: [],
@@ -31,9 +32,11 @@ const reTask = {
 		this.lines.push(str);
 		if(this.lines.length>config.lines) this.lines.shift();
 		
-		this._lines.push(str);
-		if(config.wsMode && this._lines.length == config.lines) {
-			this.send('<p>'+this._lines.splice(0).join('</p><p>')+'</p>');
+		if(this.nws) {
+			this._lines.push(str);
+			if(config.wsMode && this._lines.length == config.lines) {
+				this.send('<p>'+this._lines.splice(0).join('</p><p>')+'</p>');
+			}
 		}
 	},
 	genId() {
@@ -57,6 +60,8 @@ const reTask = {
 		};
 	},
 	send(data) {
+		if(!this.nws) return;
+		
 		data = JSON.stringify(data);
 		Object.keys(this.ws).forEach((k)=>{
 			try {
@@ -65,6 +70,11 @@ const reTask = {
 		});
 	},
 	_interval() {
+		if(!this.nws) {
+			this._lines.splice(0);
+			return;
+		}
+		
 		if(!config.wsMode || !this.running) this.send('<p>'+this._lines.splice(0).join('</p><p>')+'</p>');
 		let o = this.data();
 		delete o.lines;
@@ -90,6 +100,7 @@ const reTask = {
 		this.res = res;
 		this.status = 0;
 		this.err = false;
+		this.lines.splice(0);
 	},
 	add(isDir, ...args) {
 		if(this.running === false) { // ended skip
@@ -139,6 +150,8 @@ const reTask = {
 				this.res.status(this.status);
 				this.res.json(this.err);
 			}
+			
+			this.send('Error: ' + this.err);
 		} else if(this.qfiles.length) {
 			let args = this.qfiles.pop();
 			++this.rfiles;
@@ -167,6 +180,7 @@ const reTask = {
 		this.qdirs.splice(0);
 		this.qfiles.splice(0);
 		this._interval();
+		this.send('Completed');
 	}
 };
 const createDocument = function($scan, $dir, name, dir, pid, $id) {
