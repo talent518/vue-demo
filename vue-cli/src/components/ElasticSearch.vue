@@ -67,7 +67,7 @@
 		</tbody>
 	</table>
 	<div :class="{load:true,loading:loading,loadtxt:loadtxt,noloadtxt:!loadtxt}"><span class="msg message" v-html="loadtxt"></span><span class="msg shadow" v-html="loadtxt"></span><span class="anim gradient">↺</span><span class="anim shadow">↺</span><span ref="lines" class="lines" v-show="loadtxt"></span><button v-if="loadtxt" @click="stop">Stop index</button></div>
-	<div :class="{confirmed:true,show:confirmReindex}"><div><h1>Reindex confirm</h1><p class="message">Are you sure you want to rebuild the file and directory indexes?</p><p class="btn"><button @click="index" class="confirm">Confirm</button><button @click="confirmReindex=false" class="cancel">Cancel</button></p></div></div>
+	<div :class="{confirmed:true,show:confirmReindex}"><div><h1>Reindex confirm</h1><p class="message">Are you sure you want to rebuild the file and directory indexes?</p><p class="btn"><button @click="index" class="confirm">Confirm</button><button @click="ws" class="confirm">WS</button><button @click="confirmReindex=false" class="cancel">Cancel</button></p></div></div>
 </div>
 </template>
 
@@ -121,7 +121,8 @@ const ElasticSearch = {
 	confirmReindex: false,
 	page: 0,
 	pages: 1,
-	timer: 0
+	timer: 0,
+	$ws: false
 };
 const PSIZE = 100;
 const Units = ['','K','M','G','T'];
@@ -339,7 +340,7 @@ export default {
 		},
 		index() {
 			this.confirmReindex = false;
-			this.message = 'Reindexing ...';
+			this.message = this.loadtxt = 'Reindexing ...';
 			this.setLoading(true);
 			this.$refs.lines.innerHTML = '';
 			var progress = false, running = true;
@@ -358,7 +359,7 @@ export default {
 						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
 						this.loadtxt = '';
 					}
-					this.$refs.lines.innerHTML = body.lines.slice(-50).join('<br/>');
+					this.$refs.lines.innerHTML = '<p>' + body.lines.slice(-50).join('</p><p>') + '</p>';
 				}).catch((err)=>{
 					console.log(err, err.body);
 					
@@ -401,6 +402,10 @@ export default {
 			});
 		},
 		stop() {
+			if(this.$ws) {
+				this.$ws.send('stop');
+				return;
+			}
 			this.$http.delete('api/files').then(({body})=>{
 				this.message = body;
 			}).catch((err)=>{
@@ -412,6 +417,47 @@ export default {
 					this.message = err.body||err.message;
 				}
 			});
+		},
+		ws() {
+			this.confirmReindex = false;
+			this.message = 'Reindexing ...';
+			this.setLoading(true);
+			this.$refs.lines.innerHTML = '';
+			this.$ws = new WebSocket('ws://' + location.host + '/api/files');
+			this.$ws.addEventListener('open', ()=>{
+			    console.log('socket is open');
+			});
+			
+			let lines = [];
+			this.$ws.addEventListener('message', ({data}) => {
+				let body = JSON.parse(data);
+				
+				if(typeof(body) === 'string') {
+					this.$refs.lines.innerHTML = body;
+					// let p = document.createElement('p');
+					// p.innerHTML = body;
+					// lines.push(p);
+					// this.$refs.lines.appendChild(p);
+					// if(lines.length > 50) {
+					// 	this.$refs.lines.removeChild(lines.shift());
+					// }
+				} else {
+					if(body.running) {
+						this.loadtxt = 'Scaned to <b>' + body.scans + '</b> files or directories.<br/>Running state is <b>' + body.runs + '</b> runs, <b>' + body.rdirs + '</b> dirs, <b>' + body.rfiles + '</b> files, <b>' + body.seconds + '</b> seconds.<br/>In the queue <b>' + body.qdirs + '</b> dirs, <b>' + body.qfiles + '</b> files';
+						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories. In the queue <b>' + body.qdirs + '</b> dirs, <b>' + body.qfiles + '</b> files. Running state is <b>' + body.runs + '</b> runs, <b>' + body.rdirs + '</b> dirs, <b>' + body.rfiles + '</b> files, <b>' + body.seconds + '</b> seconds';
+					} else {
+						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
+						this.loadtxt = '';
+						this.$ws.close();
+						this.$ws = null;
+					}
+				}
+			});
+			this.$ws.addEventListener('close', () => {
+			    console.log('socket is close');
+			    this.setLoading(false);
+			});
+			console.log(this.$ws);
 		}
 	},
 	watch: {
@@ -446,6 +492,7 @@ export default {
 	destroyed() {
 		clearInterval(this.timer);
 		
+		if(this.$ws) this.$ws.close();
 		this.loading = false;
 		this.timer = 0;
 	}
@@ -501,6 +548,7 @@ export default {
 .m-elastic-search>.load>span.anim.shadow{z-index:2;padding:2px;color:#ddd;/* color:rgba(0,0,0,0.6); */}
 .m-elastic-search>.load>span.anim.gradient{background: -webkit-gradient(linear,left top,right bottom,from(#FF0000),to(#0000FF));-webkit-background-clip: text;-webkit-text-fill-color: transparent;}
 .m-elastic-search>.load>span.lines{z-index:1;left:10px;top:auto;bottom:10px;border:1px #666 solid;border-radius:3px;padding:5px;background:rgba(0,0,0,.4);color:#fff;font-size:6px;line-height:1.2em;font-weight:normal;}
+.m-elastic-search>.load>span.lines>p{margin:0;}
 .m-elastic-search>.load>button{position:absolute;right:10px;bottom:10px;font-size:20px;padding:10px 1em;border:1px #999 solid;border-radius:5px;background:#ccc;color:#000;cursor:pointer;}
 .m-elastic-search>.load.loadtxt>span.anim{margin-top:-1.3em;}
 .m-elastic-search>.load.noloadtxt>span.anim{margin-top:-0.7em;}
@@ -516,7 +564,8 @@ export default {
 .m-elastic-search>.confirmed p.btn{margin-top:20px;text-align:center;}
 .m-elastic-search>.confirmed button{margin:0;padding:0;width:80px;height:35px;line-height:35px;border-radius:3px;border:1px #999 solid;background:#ccc;cursor:pointer;outline:none;}
 .m-elastic-search>.confirmed button:focus{font-weight:bold;}
-.m-elastic-search>.confirmed button.cancel{margin-left:25px;border-radius:3px;border:1px #999 solid;background:green;color:white;}
+.m-elastic-search>.confirmed button.confirm{margin-right:25px;}
+.m-elastic-search>.confirmed button.cancel{border-radius:3px;border:1px #999 solid;background:green;color:white;}
 .m-elastic-search>.confirmed.show{display:flex;}
 
 @keyframes spin {

@@ -19,12 +19,16 @@ const reTask = {
 	time: 0,
 	status: 0,
 	err: false,
+	ws: {},
 	lines: [],
+	timer: 0,
 	log(...args) {
 		let str = args.join(' ');
 		
 		this.lines.push(str);
 		console.log(str);
+		
+		// this.send(str);
 		
 		if(this.lines.length>config.lines) this.lines.shift();
 	},
@@ -34,11 +38,40 @@ const reTask = {
 	ok() {
 		return ++this.files;
 	},
+	data() {
+		return {
+			running: this.running,
+			scans: this.files,
+			qdirs: this.qdirs.length,
+			qfiles: this.qfiles.length,
+			runs: this.runs,
+			rdirs: this.rdirs,
+			rfiles: this.rfiles,
+			seconds: this.running ? (Date.now() - this.time) / 1000 : this.time,
+			err: this.err,
+			lines: this.lines
+		};
+	},
+	send(data) {
+		data = JSON.stringify(data);
+		Object.keys(this.ws).forEach((k)=>{
+			this.ws[k].send(data);
+		});
+	},
+	_interval() {
+//		this.lines.splice(0).forEach((data)=>{
+//			this.send(data);
+//		});
+		this.send('<p>'+this.lines.splice(0).join('</p><p>')+'</p>');
+		this.send(this.data());
+	},
 	init(res) {
 		if(this.running) {
-			res.json('Making document ...');
+			if(res) res.json('Making document ...');
 			return true;
 		}
+		
+		this.timer = setInterval(this._interval.bind(this), config.interval);
 		
 		this.running = true;
 		this.id = 0;
@@ -101,20 +134,18 @@ const reTask = {
 				this.res.status(this.status);
 				this.res.json(this.err);
 			}
-			
-			this.running = false;
-			this.time = (Date.now() - this.time) / 1000;
-			this.qdirs.splice(0);
-			this.qfiles.splice(0);
 		} else if(this.qfiles.length) {
 			let args = this.qfiles.pop();
 			++this.rfiles;
 			createDocument(...args);
+			return;
 		} else if(this.qdirs.length) {
 			let args = this.qdirs.pop();
 			++this.rdirs;
 			makeDocument(...args);
+			return;
 		} else if(--this.runs) { // running ...
+			return;
 		} else { // completed and response
 			console.log('make index complated, scaned to ' + this.files + ' files or directory');
 			
@@ -122,12 +153,15 @@ const reTask = {
 			if(this.res) {
 				this.res.json(this.files);
 			}
-			
-			this.running = false;
-			this.time = (Date.now() - this.time) / 1000;
-			this.qdirs.splice(0);
-			this.qfiles.splice(0);
 		}
+		
+		clearInterval(this.timer);
+		this.timer = 0;
+		this.running = false;
+		this.time = (Date.now() - this.time) / 1000;
+		this.qdirs.splice(0);
+		this.qfiles.splice(0);
+		this._interval();
 	}
 };
 const createDocument = function($scan, $dir, name, dir, pid, $id) {
@@ -222,7 +256,7 @@ const makeDocument = function(scan, dir, pid) {
 		reTask.next(true, false);
 	}); // fs.readdir
 }
-const makeIndex = function(res) {
+const makeIndex = function() {
 	client.indices.create({
 		index: config.index,
 		body: {
@@ -255,7 +289,7 @@ const makeIndex = function(res) {
 		if(!body.acknowledged || !body.shards_acknowledged) {
 			console.error('create index error', body);
 			
-			res.json(body);
+			reTask.next(null, body);
 		} else {
 			Object.keys(config.scanDirs).forEach((k)=>{
 				reTask.add(false, config.scanDirs[k], '@' + k, k, '@', 0, reTask.genId());
@@ -264,15 +298,18 @@ const makeIndex = function(res) {
 	}).catch((err)=>{
 		console.log(err);
 		
-		if(err.body) {
-			res.status(err.body.status||500);
-			res.json(err.body.error);
-		} else {
-			res.status(err.status||500)
-			res.json(err.message||err);
-		}
+		reTask.next(null, err);
 	});
 };
+const deleteIndex = function(res) {
+	if(reTask.init(res)) return;
+	
+	client.indices.delete({index:config.index}).then((body)=>{
+		makeIndex();
+	}).catch((err)=>{
+		makeIndex();
+	});
+}
 
 module.exports = {
 	client: client,
@@ -284,31 +321,42 @@ module.exports = {
 			res.json('Not start');
 		}
 	},
+	ws: function(ws, req) {
+		var id;
+		do {
+			id = (Math.random() * 1000);
+		} while(id in reTask.ws);
+		
+		reTask.ws[id] = ws;
+		
+		ws.send(reTask.running ? '"Running ..."' : '"Runned"');
+		
+		deleteIndex(false);
+		
+		ws.on('open', function() {
+			console.log('ws connected');
+		});
+		ws.on('message', function(msg) {
+			if(msg === 'stop') {
+				reTask.next(null, new Error('stopped'));
+			}
+			
+			console.log('ws', msg);
+		});
+		ws.on('close', function() {
+			console.log('ws disconnected');
+			
+			delete reTask.ws[id];
+		});
+	},
 	progress: function(req, res) {
 		if(req.query.running !== 'true') {
 			reTask.res = false;
 		}
-		res.json({
-			running: reTask.running,
-			scans: reTask.files,
-			qdirs: reTask.qdirs.length,
-			qfiles: reTask.qfiles.length,
-			runs: reTask.runs,
-			rdirs: reTask.rdirs,
-			rfiles: reTask.rfiles,
-			seconds: reTask.running ? (Date.now() - reTask.time) / 1000 : reTask.time,
-			err: reTask.err,
-			lines: reTask.lines
-		});
+		res.json(reTask.data());
 	},
 	make: function(req, res) {
-		if(reTask.init(res)) return;
-
-		client.indices.delete({index:config.index}).then((body)=>{
-			makeIndex(res);
-		}).catch((err)=>{
-			makeIndex(res);
-		});
+		deleteIndex(res);
 	},
 	search: function(req, res) {
 		client.count({

@@ -3,7 +3,10 @@ const path = require('path');
 module.exports = {
 	index: 'vue-cli',
 	elastic: {
-		node: 'http://localhost:9200'
+		node: 'http://127.0.0.1:9200',
+		maxRetries: 5,
+		requestTimeout: 60000,
+		sniffOnStart: true
 	},
 	scanDirs: {
 		//web: path.join(__dirname, '..'),
@@ -12,7 +15,8 @@ module.exports = {
 		opt: '/opt',
 		home: process.env.HOME
 	},
-	tasks: 500,
+	tasks: 200,
 	timeFormat: 'YYYY-MM-DD HH:mm:ss',
-	lines: 200
+	lines: 200,
+	interval: 200
 };
