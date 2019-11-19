@@ -1,8 +1,8 @@
 #!/bin/bash
 
-time curl -v -XDELETE http://127.0.0.1:9200/vue-cli2
+time curl -v -XDELETE 'http://127.0.0.1:9200/vue-cli2?pretty'
 echo
-time curl -v -XPUT http://127.0.0.1:9200/vue-cli2 -H 'Content-Type: application/json; charset=UTF-8' -d '{
+time curl -v -XPUT 'http://127.0.0.1:9200/vue-cli2?pretty' -H 'Content-Type: application/json; charset=UTF-8' -d '{
 	"mappings": {
 		"properties": {
 			"atime": {
@@ -69,7 +69,7 @@ time curl -v -XPUT http://127.0.0.1:9200/vue-cli2 -H 'Content-Type: application/
 	}
 }'
 echo
-time curl -v http://127.0.0.1:9200/_reindex -H 'Content-Type: application/json; charset=UTF-8' -d '{
+time curl -v 'http://127.0.0.1:9200/_reindex' -H 'Content-Type: application/json; charset=UTF-8' -d '{
 	"source": {
 		"index": "vue-cli"
 	},

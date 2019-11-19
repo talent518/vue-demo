@@ -66,7 +66,7 @@
 			</tr>
 		</tbody>
 	</table>
-	<div :class="{load:true,loading:loading,loadtxt:loadtxt,noloadtxt:!loadtxt}"><span class="msg message" v-html="loadtxt"></span><span class="msg shadow" v-html="loadtxt"></span><span class="anim gradient">↺</span><span class="anim shadow">↺</span><span ref="lines" class="lines" v-show="loadtxt"></span><button v-if="loadtxt" @click="stop">Stop index</button></div>
+	<div :class="{load:true,loading:loading,loadtxt:loadtxt,noloadtxt:!loadtxt}"><span class="msg message" v-html="loadtxt"></span><span class="msg shadow" v-html="loadtxt"></span><span class="anim gradient">↺</span><span class="anim shadow">↺</span><span ref="lines" class="lines" v-show="loadtxt"></span><button v-if="loadtxt" @click="stop">Stop index</button><button v-if="loadtxt" @click="close" class="close">Close</button></div>
 	<div :class="{confirmed:true,show:confirmReindex}"><div><h1>Reindex confirm</h1><p class="message">Are you sure you want to rebuild the file and directory indexes?</p><p class="btn"><button @click="index" class="confirm">Confirm</button><button @click="ws" class="confirm">WS</button><button @click="confirmReindex=false" class="cancel">Cancel</button></p></div></div>
 </div>
 </template>
@@ -458,6 +458,15 @@ export default {
 			    this.setLoading(false);
 			});
 			console.log(this.$ws);
+		},
+		close() {
+			if(this.$ws) {
+				this.$ws.close();
+			} else {
+				this.setLoading(false);
+				clearInterval(this.timer);
+				this.loadtxt = '';
+			}
 		}
 	},
 	watch: {
@@ -550,6 +559,7 @@ export default {
 .m-elastic-search>.load>span.lines{z-index:1;left:10px;top:auto;bottom:10px;border:1px #666 solid;border-radius:3px;padding:5px;background:rgba(0,0,0,.4);color:#fff;font-size:6px;line-height:1.2em;font-weight:normal;}
 .m-elastic-search>.load>span.lines>p{margin:0;}
 .m-elastic-search>.load>button{position:absolute;right:10px;bottom:10px;font-size:20px;padding:10px 1em;border:1px #999 solid;border-radius:5px;background:#ccc;color:#000;cursor:pointer;}
+.m-elastic-search>.load>button.close{bottom:auto;top:10px;}
 .m-elastic-search>.load.loadtxt>span.anim{margin-top:-1.3em;}
 .m-elastic-search>.load.noloadtxt>span.anim{margin-top:-0.7em;}
 .m-elastic-search>.load.noloadtxt>span.msg{margin-top:1em;}
