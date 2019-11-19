@@ -234,19 +234,6 @@ const reTask = {
 			this.send('Completed');
 		}
 		
-		if(this.errfd) {
-			fs.close(this.errfd, (err)=>{
-				if(err) console.error('close errFile error', err);
-			});
-			this.errfd = 0;
-		}
-		if(this.outfd) {
-			fs.close(this.outfd, (err)=>{
-				if(err) console.error('close logFile error', err);
-			});
-			this.outfd = 0;
-		}
-		
 		clearInterval(this.timer);
 		this.timer = 0;
 		this.time = (Date.now() - this.time) / 1000;
@@ -260,6 +247,19 @@ const reTask = {
 		this.qdirs.splice(0);
 		this.qfiles.splice(0);
 		this._interval();
+		
+		if(this.errfd) {
+			fs.close(this.errfd, (err)=>{
+				if(err) console.error('close errFile error', err);
+			});
+			this.errfd = 0;
+		}
+		if(this.outfd) {
+			fs.close(this.outfd, (err)=>{
+				if(err) console.error('close logFile error', err);
+			});
+			this.outfd = 0;
+		}
 	}
 };
 const createDocument = function($scan, $dir, name, dir, pid, $id) {
