@@ -21,5 +21,6 @@ module.exports = {
 	interval: 200,
 	wsMode: true,
 	logFile: path.join(__dirname, 'elastic.log'),
-	errFile: path.join(__dirname, 'elastic.err')
+	errFile: path.join(__dirname, 'elastic.err'),
+	searchCount: true
 };

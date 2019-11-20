@@ -76,6 +76,11 @@ const reTask = {
 			console.error(str);
 		}
 	},
+	setId(id) {
+		if(this.id) return;
+		
+		this.id = id;
+	},
 	genId() {
 		return ++this.id;
 	},
@@ -239,12 +244,12 @@ const reTask = {
 			}
 		} else if(err) { // catch completed and response
 			if(err.body) {
-				this.error('ERROR.end', err.body.error, err);
+				this.error('ERROR.end', JSON.stringify(err.body.error, null, 4), JSON.stringify(err, null, 4));
 				
 				this.status = (err.body.status || 500);
 				this.err = (err.body.error.reason || err.body.error.message || err.message);
 			} else {
-				this.error('ERROR.end', err.error, err);
+				this.error('ERROR.end', JSON.stringify(err.error, null, 4), JSON.stringify(err, null, 4));
 				
 				this.status = (err.status || 500);
 				this.err = err.message;
@@ -265,8 +270,7 @@ const reTask = {
 			let args = this.qdirs.pop();
 			++this.rdirs;
 			makeDocument(...args);
-		} else if(this.runs) { // running ...
-			this.runs--;
+		} else if(--this.runs) { // running ...
 		} else { // completed and response
 			this.status = 200;
 			if(this.res) {
@@ -299,6 +303,7 @@ const createDocument = function($scan, $dir, name, dir, pid, $id, st) {
 		id: $id,
 		index: config.index,
 		body: {
+			id: $id,
 			pid: pid,
 			name: name,
 			path: dir,
@@ -350,24 +355,71 @@ const statDocument = function($scan, $dir, name, dir, pid, $id, next) {
 	}); // fs.stat
 };
 const makeDocument = function(scan, dir, pid) {
-	fs.readdir(scan, (err, files)=>{
-		if(err) {
-			reTask.next(true, err);
-			return;
-		}
-		
+	if(pid == 0) {
+		let dirs = Object.keys(scan);
 		const next = function(err) {
-			if(err || !files.length) {
+			if(err || !dirs.length) {
 				reTask.next(true, err);
 				return;
 			}
 			
-			let name = files.shift();
-			statDocument(path.join(scan, name), path.join(dir, name), name, dir, pid, reTask.genId(), next);
+			let k = dirs.shift();
+			statDocument(scan[k], dir + k, k, dir, pid, reTask.genId(), next);
 		};
-		
 		next();
-	}); // fs.readdir
+	} else {
+		fs.readdir(scan, (err, files)=>{
+			if(err) {
+				reTask.next(true, err);
+				return;
+			}
+			
+			const next = function(err) {
+				if(err || !files.length) {
+					reTask.next(true, err);
+					return;
+				}
+				
+				let name = files.shift();
+				statDocument(path.join(scan, name), path.join(dir, name), name, dir, pid, reTask.genId(), next);
+			};
+			
+			next();
+		}); // fs.readdir
+	}
+};
+const newDocument = function(scans, res) {
+	Object.keys(scans).forEach((k)=>{
+		scanDirs[k] = scans[k];
+	});
+	saveScans();
+	if(reTask.running) {
+		reTask.add(true, scans, '@', 0);
+	} else {
+		client.search({
+			index: config.index,
+			body: {
+				aggs: {
+					maxid: {
+						max: {
+							field: 'id'
+						}
+					}
+				}
+			}
+		}).then(({body})=>{
+			reTask.init(res);
+			reTask.setId(body.aggregations.maxid.value);
+			reTask.add(true, scans, '@', 0);
+		}).catch(({body})=>{
+			console.log(body);
+			
+			if(!res) return;
+			
+			res.status(body.status);
+			res.json(body.error);
+		});
+	}
 };
 const makeIndex = function() {
 	client.indices.create({
@@ -379,6 +431,7 @@ const makeIndex = function() {
 			},
 			mappings: {
 				properties: {
+					id: {type:'long'},
 					pid: {type:'long'},
 					name: {type:'text',fielddata:true},
 					path: {type:'text',fielddata:true},
@@ -403,17 +456,7 @@ const makeIndex = function() {
 			reTask.error('create index error', body);
 			reTask.next(null, body);
 		} else {
-			let dirs = Object.keys(config.scanDirs);
-			const next = function(err) {
-				if(err || !dirs.length) {
-					reTask.next(null, err);
-					return;
-				}
-				
-				let k = dirs.shift();
-				statDocument(config.scanDirs[k], '@' + k, k, '@', 0, reTask.genId(), next);
-			};
-			next();
+			reTask.add(true, config.scanDirs, '@', 0);
 		}
 	}).catch((err)=>{
 		reTask.next(null, err);
@@ -428,6 +471,23 @@ const deleteIndex = function(res) {
 		makeIndex();
 	});
 };
+const scanDirs = {};
+const SCANDIR = path.join(__dirname, '../elastic.json');
+const saveScans = function() {
+	fs.writeFile(SCANDIR, JSON.stringify(scanDirs, null, 4), (err)=>{
+		if(err) console.error('SCANDIR', err);
+	});
+};
+try {
+	let scans = require(SCANDIR);
+	Object.keys(scans).forEach((k)=>{
+		scanDirs[k] = scans[k];
+		config.scanDirs[k] = scans[k];
+	});
+	console.log('Loaded elastic.json');
+} catch(e) {
+	console.log('No found elastic.json');
+}
 
 module.exports = {
 	client: client,
@@ -450,16 +510,22 @@ module.exports = {
 		reTask.ws[id] = ws;
 		reTask.nws++;
 		
-		ws.send(reTask.running ? '"Running ..."' : '"Runned"');
-		
-		deleteIndex(false);
-		
 		console.log('ws connected - ' + id + ' - ' + moment(Date.now()).format(config.timeFormat));
 		ws.on('message', function(msg) {
 			if(msg === 'stop') {
 				if(!reTask.stoping && reTask.running) {
 					reTask.next(null, new Error('stopped'));
 				}
+			} else if(msg === 'remake') {
+				ws.send(reTask.running ? '"Running ..."' : '"Runned"');
+				
+				deleteIndex(false);
+			} else if(msg.indexOf('\t') >= 0) {
+				let scan = msg.split('\t');
+				let scans = {};
+				scans[scan[0]] = scan[1];
+				
+				newDocument(scans, false);
 			}
 			
 			console.log('ws', msg);
@@ -478,39 +544,59 @@ module.exports = {
 		res.json(reTask.data());
 	},
 	make: function(req, res) {
-		deleteIndex(res);
+		if(Object.keys(req.body).length) {
+			newDocument(req.body, res);
+		} else {
+			deleteIndex(res);
+		}
 	},
 	search: function(req, res) {
-		client.count({
-			index: config.index,
-			body: {
-				query: req.body.query
-			}
-		}).then(({body})=>{
-			var count = body.count;
-			if(req.body.from > 0 && req.body.from >= count) { // fix from >= count of question.
-				let pages = Math.max(1, Math.ceil(count/req.body.size));
-				req.body.from = (pages - 1) * req.body.size;
-			}
+		if(config.searchCount) {
+			client.count({
+				index: config.index,
+				body: {
+					query: req.body.query
+				}
+			}).then(({body})=>{
+				var count = body.count;
+				if(req.body.from > 0 && req.body.from >= count) { // fix from >= count of question.
+					let pages = Math.max(1, Math.ceil(count/req.body.size));
+					req.body.from = (pages - 1) * req.body.size;
+				}
+				client.search({
+					index: config.index,
+					body: req.body
+				}).then(({body})=>{
+					res.json({
+						hits: body.hits.hits,
+						total: {
+							value:count,
+							relation:'eq'
+						},
+						aggs: body.aggregations.types.buckets
+					});
+				}).catch(({body})=>{
+					res.status(body.status);
+					res.json(body.error);
+				});
+			}).catch(({body})=>{
+				res.status(body.status);
+				res.json(body.error);
+			});
+		} else {
 			client.search({
 				index: config.index,
 				body: req.body
 			}).then(({body})=>{
 				res.json({
 					hits: body.hits.hits,
-					total: {
-						value:count,
-						relation:'eq'
-					},
+					total: body.hits.total,
 					aggs: body.aggregations.types.buckets
 				});
 			}).catch(({body})=>{
 				res.status(body.status);
 				res.json(body.error);
 			});
-		}).catch(({body})=>{
-			res.status(body.status);
-			res.json(body.error);
-		});
+		}
 	}
 };

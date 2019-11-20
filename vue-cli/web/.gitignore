@@ -2,3 +2,4 @@ node_modules
 package-lock.json
 elastic.log
 elastic.err
+elastic.json

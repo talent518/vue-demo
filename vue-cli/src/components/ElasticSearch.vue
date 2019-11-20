@@ -67,7 +67,7 @@
 		</tbody>
 	</table>
 	<div :class="{load:true,loading:loading,loadtxt:loadtxt,noloadtxt:!loadtxt}"><span class="msg message" v-html="loadtxt"></span><span class="msg shadow" v-html="loadtxt"></span><span class="anim gradient">↺</span><span class="anim shadow">↺</span><span ref="lines" class="lines" v-show="loadtxt"></span><button v-if="loadtxt" @click="stop">Stop index</button><button v-if="loadtxt" @click="close" class="close">Close</button></div>
-	<div :class="{confirmed:true,show:confirmReindex}"><div><h1>Reindex confirm</h1><p class="message">Are you sure you want to rebuild the file and directory indexes?</p><p class="btn"><button @click="index" class="confirm">Confirm</button><button @click="ws" class="confirm">WS</button><button @click="confirmReindex=false" class="cancel">Cancel</button></p></div></div>
+	<div :class="{confirmed:true,show:confirmReindex}"><div><h1>Reindex confirm</h1><p class="message">Are you sure you want to rebuild the file and directory indexes?</p><p class="scan"><input type="text" v-model="scanName" class="name" placeholder="Please input scan of name"/><input type="text" v-model="scanPath" class="path" placeholder="Please input scan of path"/></p><p class="btn"><button @click="index" class="confirm">Confirm</button><button @click="ws" class="confirm">WS</button><button @click="confirmReindex=false" class="cancel">Cancel</button></p></div></div>
 </div>
 </template>
 
@@ -122,7 +122,9 @@ const ElasticSearch = {
 	page: 0,
 	pages: 1,
 	timer: 0,
-	$ws: false
+	$ws: false,
+	scanName: '',
+	scanPath: ''
 };
 const PSIZE = 100;
 const Units = ['','K','M','G','T'];
@@ -182,10 +184,13 @@ export default {
 		setLoading(b) {
 			if(b) {
 				if(this.loading) return;
+				
 				this.loading = true;
 			} else {
 				if(!this.loading) return;
+				
 				this.loading = false;
+				this.loadtxt = '';
 			}
 		},
 		search() {
@@ -330,12 +335,14 @@ export default {
 				});
 				
 				this.message = 'Results is ' + this.total.relation + ' <b>' + this.total.value + '</b>' + (orders.length ? ', order by ' + orders.join(', ') : '') + (aggs.length ? ', group count is ' + aggs.join(', ') : '');
-			}).catch(({message,body})=>{
+			}).catch(({ok,status,message,body})=>{
+				if(ok === false && status === 0) {
+					this.message = 'Request timeout or reject';
+				} else {
+					this.message = body && (body.reason || body) || message || 'Error';
+				}
+				
 				this.setLoading(false);
-				if(body && body.type === 'index_not_found_exception')
-					this.index();
-				else
-					this.message = message;
 			});
 		},
 		index() {
@@ -357,23 +364,25 @@ export default {
 					} else {
 						clearInterval(this.timer);
 						this.message = 'Scaned to <b>' + body.scans + '</b> files or directories, <b>' + body.seconds + '</b> seconds' + (body.err ? ', Error: ' + body.err : '');
-						this.loadtxt = '';
 					}
 					this.$refs.lines.innerHTML = '<p>' + body.lines.slice(-50).join('</p><p>') + '</p>';
-				}).catch((err)=>{
-					console.log(err, err.body);
-					
-					if(err.ok === false && err.status === 0) {
+				}).catch(({ok,status,message,body})=>{
+					if(ok === false && status === 0) {
 						this.message = 'Request timeout or reject';
 					} else {
-						this.message = err.body||err.message;
+						this.message = body && (body.reason || body) || message || 'Error';
 					}
 					
 					clearInterval(this.timer);
 					this.setLoading(false);
 				});
 			}.bind(this),500);
-			this.$http.post('api/files', {}, {timeout:-1}).then(({body})=>{
+			let scan = {};
+			if(this.scanName && this.scanPath) {
+				scan[this.scanName] = this.scanPath;
+				this.scanName = this.scanPath = '';
+			}
+			this.$http.post('api/files', scan, {timeout:-1}).then(({body})=>{
 				running = false;
 				
 				if(typeof(body) === 'string') {
@@ -384,21 +393,18 @@ export default {
 				clearInterval(this.timer);
 				this.setLoading(false);
 				this.message = 'Scaned to <b>' + body + '</b> files or directories';
-			}).catch((err)=>{
+			}).catch(({ok,status,message,body})=>{
 				running = false;
 				
-				console.log(err, err.body);
-				
-				if(err.ok === false && err.status === 0) {
+				if(ok === false && status === 0) {
 					this.message = 'Request timeout or reject';
-					return; // request timeout
+					return;
+				} else {
+					this.message = body && (body.reason || body) || message || 'Error';
 				}
 				
 				clearInterval(this.timer);
 				this.setLoading(false);
-				
-				this.loadtxt = '';
-				this.message = err.body||err.message;
 			});
 		},
 		stop() {
@@ -408,13 +414,11 @@ export default {
 			}
 			this.$http.delete('api/files').then(({body})=>{
 				this.message = body;
-			}).catch((err)=>{
-				console.log(err, err.body);
-				
-				if(err.ok === false && err.status === 0) {
+			}).catch(({ok,status,message,body})=>{
+				if(ok === false && status === 0) {
 					this.message = 'Request timeout or reject';
 				} else {
-					this.message = err.body||err.message;
+					this.message = body && (body.reason || body) || message || 'Error';
 				}
 			});
 		},
@@ -426,6 +430,13 @@ export default {
 			this.$ws = new WebSocket('ws://' + location.host + '/api/files');
 			this.$ws.addEventListener('open', ()=>{
 			    console.log('socket is open');
+			    
+			    if(this.scanName && this.scanPath) {
+			    	this.$ws.send(this.scanName + '\t' + this.scanPath);
+			    	this.scanName = this.scanPath = '';
+			    } else {
+			    	this.$ws.send('remake');
+			    }
 			});
 			
 			let lines = [];
@@ -570,12 +581,15 @@ export default {
 .m-elastic-search>.confirmed>div{display:inline-block;margin:auto;padding:25px;background:white;border:1px #999 solid;border-radius:5px;}
 .m-elastic-search>.confirmed *{font-size:16px;}
 .m-elastic-search>.confirmed p{margin:0;white-space:nowrap;}
-.m-elastic-search>.confirmed p.message{margin:40px 0;}
+.m-elastic-search>.confirmed p.message{margin:30px 0;}
+.m-elastic-search>.confirmed p.scan{margin-right:8px;}
 .m-elastic-search>.confirmed p.btn{margin-top:20px;text-align:center;}
 .m-elastic-search>.confirmed button{margin:0;padding:0;width:80px;height:35px;line-height:35px;border-radius:3px;border:1px #999 solid;background:#ccc;cursor:pointer;outline:none;}
 .m-elastic-search>.confirmed button:focus{font-weight:bold;}
 .m-elastic-search>.confirmed button.confirm{margin-right:25px;}
 .m-elastic-search>.confirmed button.cancel{border-radius:3px;border:1px #999 solid;background:green;color:white;}
+.m-elastic-search>.confirmed input{display:block;width:100%;height:30px;padding:0 3px;border:1px #999 solid;border-radius:3px;line-height:30px;}
+.m-elastic-search>.confirmed input.name{margin-bottom:20px;}
 .m-elastic-search>.confirmed.show{display:flex;}
 
 @keyframes spin {
