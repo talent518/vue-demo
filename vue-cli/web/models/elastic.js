@@ -476,14 +476,13 @@ const deleteIndex = function(res) {
 	});
 };
 const scanDirs = {};
-const SCANDIR = path.join(__dirname, '../elastic.json');
 const saveScans = function() {
-	fs.writeFile(SCANDIR, JSON.stringify(scanDirs, null, 4), (err)=>{
-		if(err) console.error('SCANDIR', err);
+	fs.writeFile(config.saveFile, JSON.stringify(scanDirs, null, 4), (err)=>{
+		if(err) console.error('SAVEFILE', err);
 	});
 };
 try {
-	let scans = require(SCANDIR);
+	let scans = require(config.saveFile);
 	Object.keys(scans).forEach((k)=>{
 		scanDirs[k] = scans[k];
 		config.scanDirs[k] = scans[k];

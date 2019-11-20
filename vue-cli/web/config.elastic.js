@@ -22,5 +22,6 @@ module.exports = {
 	wsMode: true,
 	logFile: path.join(__dirname, 'elastic.log'),
 	errFile: path.join(__dirname, 'elastic.err'),
-	searchCount: true
+	searchCount: true,
+	saveFile: path.join(__dirname, 'elastic.json')
 };
