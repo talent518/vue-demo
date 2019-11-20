@@ -236,9 +236,7 @@ const reTask = {
 		}
 		
 		if(this.stoping) {
-			if(this.runs) {
-				this.runs--;
-			} else {
+			if(--this.runs == 0) {
 				this.stop();
 				this.stoping = false;
 			}
@@ -260,6 +258,12 @@ const reTask = {
 				this.res.json(this.err);
 			}
 			
+			if(typeof(isDir) === 'boolean') {
+				if(--this.runs === 0) {
+					this.stop();
+					return;
+				}
+			}
 			this.stoping = true;
 			this.log(this.err);
 		} else if(this.qfiles.length) {
@@ -412,7 +416,7 @@ const newDocument = function(scans, res) {
 			reTask.setId(body.aggregations.maxid.value);
 			reTask.add(true, scans, '@', 0);
 		}).catch(({body})=>{
-			console.log(body);
+			reTask.error('MAXID', body);
 			
 			if(!res) return;
 			
