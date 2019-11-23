@@ -5,7 +5,8 @@ const moment = require('moment');
 
 const config = require('../config.elastic');
 
-const { Client } = require('@elastic/elasticsearch');
+const { Client, errors } = require('@elastic/elasticsearch');
+const { ResponseError } = errors;
 const client = new Client(config.elastic);
 
 const reTask = {
@@ -28,8 +29,30 @@ const reTask = {
 	lines: [],
 	_lines: [],
 	timer: 0,
+	format(...args) {
+		let strs = [];
+
+		strs.push('[' + moment(Date.now()).format(config.timeFormat) + ']');
+
+		args.forEach((v)=>{
+			if(v instanceof ResponseError) {
+				strs.push('\nstatusCode:', v.statusCode, '\nheaders:', JSON.stringify(v.headers, null, 4).split('\n').join('\n    '), '\nbody:', JSON.stringify(v.body, null, 4).split('\n').join('\n    '), '\nstack:', v.stack.split('\n').join('\n    '));
+			} else if(v instanceof Error) {
+				if(v.meta) {
+					strs.push('META:', JSON.stringify(v.meta, null, 4));
+				}
+				strs.push('\n' + v.stack);
+			} else if(typeof(v) === 'object') {
+				strs.push(JSON.stringify(v, null, 4));
+			} else {
+				strs.push(v);
+			}
+		});
+
+		return strs.join(' ');
+	},
 	log(...args) {
-		let str = '[' + moment(Date.now()).format(config.timeFormat) + '] ' + args.join(' ');
+		let str = this.format(...args);
 		
 		if(this.outfd) {
 			fs.write(this.outfd, str + os.EOL, (err) => {
@@ -58,7 +81,7 @@ const reTask = {
 		}
 	},
 	error(...args) {
-		let str = '[' + moment(Date.now()).format(config.timeFormat) + '] ' + args.join(' ');
+		let str = this.format(...args)
 		
 		if(this.errfd) {
 			fs.write(this.errfd, str + os.EOL, (err) => {
@@ -158,21 +181,50 @@ const reTask = {
 		this.stoping = false;
 		this.running = true;
 		this.timer = setInterval(this._interval.bind(this), config.interval);
-		this.id = 0;
-		this.files = 0;
-		this.qdirs.splice(0);
-		this.qfiles.splice(0);
+		// this.id = 0;
+		// this.files = 0;
+		// this.qdirs.splice(0);
+		// this.qfiles.splice(0);
 		this.runs = 0;
 		this.rdirs = 0;
 		this.rfiles = 0;
-		this.time = Date.now();
+		// this.time = Date.now();
 		this.res = res;
 		this.status = 0;
 		this.err = false;
 		this.lines.splice(0);
+
+		for(let i=0; i<config.tasks; i++) {
+			if(this.qfiles.length) {
+				++this.runs;
+				++this.rfiles;
+				let args = this.qfiles.pop();
+				createDocument(...args);
+			} else if(this.qdirs.length) {
+				++this.runs;
+				++this.rdirs;
+				let args = this.qdirs.pop();
+				makeDocument(...args);
+			}
+		}
+
+		if(this.runs > 0) {
+			this.time = Date.now() - this.time * 1000;
+			return true;
+		} else {
+			this.id = 0;
+			this.files = 0;
+			this.time = Date.now();
+		}
 	},
 	add(isDir, ...args) {
 		if(this.running === false || this.stoping) { // ended skip
+			this.error('ADD', isDir, ...args);
+			if(isDir) {
+				this.qdirs.push(args);
+			} else {
+				this.qfiles.push(args);
+			}
 		} else if(this.runs < config.tasks) {
 			++this.runs;
 			if(isDir) {
@@ -199,12 +251,15 @@ const reTask = {
 		this.running = false;
 		
 		this.log((this.stoping ? 'Stopped, ' : 'Completed, ') + this.files + ' files, ' + this.time + ' seconds');
+
 		if(this.err) {
-			this.error(this.files, this.time, this.rdirs, this.rfiles, JSON.stringify(this.qdirs,null,4), JSON.stringify(this.qfiles,null,4), this.err);
+			let o = this.data();
+			delete o.lines;
+			this.error(o);
 		}
 		
-		this.qdirs.splice(0);
-		this.qfiles.splice(0);
+		// this.qdirs.splice(0);
+		// this.qfiles.splice(0);
 		this._interval();
 		
 		if(this.errfd) {
@@ -222,7 +277,7 @@ const reTask = {
 		
 		this.send(this.stoping ? 'Stopped' : 'Completed');
 	},
-	next(isDir, err) {
+	next(isDir, err, ...args) {
 		if(this.running === false) { // ended skip
 			console.trace(arguments);
 			return;
@@ -236,19 +291,21 @@ const reTask = {
 		}
 		
 		if(this.stoping) {
+			if(err) {
+				this.error('NEXT', isDir, err);
+			}
+			if(args.length) {
+				this.add(isDir, ...args);
+			}
 			if(--this.runs == 0) {
 				this.stop();
 				this.stoping = false;
 			}
 		} else if(err) { // catch completed and response
 			if(err.body) {
-				this.error('ERROR.end', JSON.stringify(err.body.error, null, 4), JSON.stringify(err, null, 4));
-				
 				this.status = (err.body.status || 500);
 				this.err = (err.body.error.reason || err.body.error.message || err.message);
 			} else {
-				this.error('ERROR.end', JSON.stringify(err.error, null, 4), JSON.stringify(err, null, 4));
-				
 				this.status = (err.status || 500);
 				this.err = err.message;
 			}
@@ -258,14 +315,17 @@ const reTask = {
 				this.res.json(this.err);
 			}
 			
+			this.stoping = true;
+			if(args.length) {
+				this.add(isDir, ...args);
+			}
+			this.error('ERROR.end', err);
 			if(typeof(isDir) === 'boolean') {
 				if(--this.runs === 0) {
 					this.stop();
 					return;
 				}
 			}
-			this.stoping = true;
-			this.log(this.err);
 		} else if(this.qfiles.length) {
 			let args = this.qfiles.pop();
 			++this.rfiles;
@@ -331,7 +391,7 @@ const createDocument = function($scan, $dir, name, dir, pid, $id, st) {
 		reTask.next(false, false);
 	}).catch((err)=>{
 		reTask.error(type, $id, pid, mode.toString(8), $dir, err);
-		reTask.next(false, err);
+		reTask.next(false, err, $scan, $dir, name, dir, pid, $id, st);
 	});
 };
 const statDocument = function($scan, $dir, name, dir, pid, $id, next) {
@@ -394,7 +454,12 @@ const makeDocument = function(scan, dir, pid) {
 };
 const newDocument = function(scans, res) {
 	Object.keys(scans).forEach((k)=>{
-		scanDirs[k] = scans[k];
+		if(k in scanDirs || k in config.scanDirs) {
+			reTask.error('EXISTS', k, scans[k]);
+			delete scans[k];
+		} else {
+			scanDirs[k] = scans[k];
+		}
 	});
 	saveScans();
 	if(reTask.running) {
