@@ -723,12 +723,12 @@ module.exports = {
 						aggs: body.aggregations.types.buckets
 					});
 				}).catch(({body})=>{
-					res.status(body.status);
-					res.json(body.error);
+					res.status(body && body.status || 500);
+					res.json(body && body.error || 'elastic connect error.');
 				});
 			}).catch(({body})=>{
-				res.status(body.status);
-				res.json(body.error);
+				res.status(body && body.status || 500);
+				res.json(body && body.error || 'elastic connect error.');
 			});
 		} else {
 			client.search({
@@ -741,8 +741,8 @@ module.exports = {
 					aggs: body.aggregations.types.buckets
 				});
 			}).catch(({body})=>{
-				res.status(body.status);
-				res.json(body.error);
+				res.status(body && body.status || 500);
+				res.json(body && body.error || 'elastic connect error.');
 			});
 		}
 	}
