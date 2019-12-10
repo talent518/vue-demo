@@ -226,10 +226,17 @@ const reTask = {
 				this.qfiles.push(args);
 			}
 		} else if(this.runs < config.tasks) {
-			++this.runs;
 			if(isDir) {
+				++this.runs;
 				++this.rdirs;
 				makeDocument(...args);
+			} else if(config.bulks > 0) {
+				this.qfiles.push(args);
+				if(this.rfiles < config.bulkTasks && this.qfiles.length >= config.bulks) {
+					++this.runs;
+					++this.rfiles;
+					bulkDocuments(this.qfiles.splice(0, config.bulks));
+				}
 			} else {
 				++this.rfiles;
 				createDocument(...args);
@@ -326,14 +333,20 @@ const reTask = {
 					return;
 				}
 			}
-		} else if(this.qfiles.length) {
+		} else if(config.bulks <= 0 && this.qfiles.length) {
 			let args = this.qfiles.pop();
 			++this.rfiles;
 			createDocument(...args);
+		} else if(config.bulks > 0 && this.rfiles < config.bulkTasks && this.qfiles.length >= config.bulks) {
+			++this.rfiles;
+			bulkDocuments(this.qfiles.splice(0, config.bulks));
 		} else if(this.qdirs.length) {
 			let args = this.qdirs.pop();
 			++this.rdirs;
 			makeDocument(...args);
+		} else if(config.bulks > 0 && this.rfiles < config.bulkTasks && this.qfiles.length) {
+			++this.rfiles;
+			bulkDocuments(this.qfiles.splice(0, config.bulks));
 		} else if(--this.runs) { // running ...
 		} else { // completed and response
 			this.status = 200;
@@ -344,24 +357,90 @@ const reTask = {
 		}
 	}
 };
+const bulkDocuments = function(docs) {
+	var bulkBody = [];
+	
+	docs.forEach((v,k)=>{
+		bulkDocument(bulkBody, ...v);
+	});
+	
+	client.bulk({
+		index: config.index,
+		body: bulkBody
+	}).then(({body})=>{
+		body.items.forEach((item, i)=>{
+			if(item.index.result === 'created') {
+				reTask.ok();
+				bulkResult(...docs[i]);
+			} else {
+				reTask.add(false, ...docs[i]);
+			}
+		});
+		reTask.next(false, false);
+	}).catch((err)=>{
+		docs.forEach((doc,i)=>{
+			reTask.add(false, ...doc);
+		});
+		reTask.next(false, err);
+	});
+};
+const bulkResult = function($scan, $dir, name, dir, pid, $id, st) {
+	let mode = (st.mode & 07777);
+	let type = getTypeByStat(st);
+	
+	reTask.log(type, $id, pid, mode.toString(8), $dir);
+};
+const bulkDocument = function(body, $scan, $dir, name, dir, pid, $id, st) {
+	let mode = (st.mode & 07777);
+	let type = getTypeByStat(st);
+	
+	body.push({
+		index: {
+			_id: $id
+		}
+	});
+	body.push({
+		id: $id,
+		pid: pid,
+		name: name,
+		path: dir,
+		link: st.isSymbolicLink() ? fs.readlinkSync($scan) : null,
+		type: type,
+		size: st.size,
+		mode: mode,
+		nlink: st.nlink,
+		uid: st.uid,
+		gid: st.gid,
+		dev: st.dev,
+		ino: st.ino,
+		atime: moment(st.atime).format(config.timeFormat),
+		mtime: moment(st.mtime).format(config.timeFormat),
+		ctime: moment(st.ctime).format(config.timeFormat),
+		birthtime: moment(st.birthtime).format(config.timeFormat)
+	});
+};
+const getTypeByStat = function(st) {
+	if(st.isFile()) {
+		return 'REG';
+	} else if(st.isDirectory()) {
+		return 'DIR';
+	} else if(st.isBlockDevice()) {
+		return 'BLK';
+	} else if(st.isCharacterDevice()) {
+		return 'CHR';
+	} else if(st.isFIFO()) {
+		return 'FIFO';
+	} else if(st.isSocket()) {
+		return 'SOCK';
+	} else if(st.isSymbolicLink()) {
+		return 'LNK';
+	} else {
+		return 'Unknown';
+	}
+};
 const createDocument = function($scan, $dir, name, dir, pid, $id, st) {
 	let mode = (st.mode & 07777);
-	let type = 'Unknown';
-	if(st.isFile()) {
-		type = 'REG';
-	} else if(st.isDirectory()) {
-		type = 'DIR';
-	} else if(st.isBlockDevice()) {
-		type = 'BLK';
-	} else if(st.isCharacterDevice()) {
-		type = 'CHR';
-	} else if(st.isFIFO()) {
-		type = 'FIFO';
-	} else if(st.isSocket()) {
-		type = 'SOCK';
-	} else if(st.isSymbolicLink()) {
-		type = 'LNK';
-	}
+	let type = getTypeByStat(st);
 	
 	client.create({
 		id: $id,
@@ -572,7 +651,7 @@ module.exports = {
 	ws: function(ws, req) {
 		var id;
 		do {
-			id = (Math.random() * 1000);
+			id = parseInt(Math.random() * 1000);
 		} while(id in reTask.ws);
 		
 		reTask.ws[id] = ws;
