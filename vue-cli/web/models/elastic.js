@@ -344,7 +344,7 @@ const reTask = {
 			let args = this.qdirs.pop();
 			++this.rdirs;
 			makeDocument(...args);
-		} else if(config.bulks > 0 && this.rfiles < config.bulkTasks && this.qfiles.length) {
+		} else if(this.rdirs === 0 && config.bulks > 0 && this.rfiles < config.bulkTasks && this.qfiles.length) {
 			++this.rfiles;
 			bulkDocuments(this.qfiles.splice(0, config.bulks));
 		} else if(--this.runs) { // running ...
