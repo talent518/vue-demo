@@ -567,7 +567,7 @@ export default {
 .m-elastic-search>.load>span.anim{margin-top:-0.5em;margin-left:-0.5em;font-size:100px;animation: spin 0.6s linear infinite;}
 .m-elastic-search>.load>span.anim.shadow{z-index:2;padding:2px;color:#ddd;/* color:rgba(0,0,0,0.6); */}
 .m-elastic-search>.load>span.anim.gradient{background: -webkit-gradient(linear,left top,right bottom,from(#FF0000),to(#0000FF));-webkit-background-clip: text;-webkit-text-fill-color: transparent;}
-.m-elastic-search>.load>span.lines{z-index:1;left:10px;top:auto;bottom:10px;border:1px #666 solid;border-radius:3px;padding:5px;background:rgba(0,0,0,.4);color:#fff;font-size:6px;line-height:1.2em;font-weight:normal;}
+.m-elastic-search>.load>span.lines{z-index:1;left:10px;top:auto;bottom:10px;border:1px #666 solid;border-radius:3px;padding:5px;background:rgba(0,0,0,.4);color:#fff;font-size:10px;line-height:14px;font-weight:normal;}
 .m-elastic-search>.load>span.lines>p{margin:0;}
 .m-elastic-search>.load>button{position:absolute;right:10px;bottom:10px;font-size:20px;padding:10px 1em;border:1px #999 solid;border-radius:5px;background:#ccc;color:#000;cursor:pointer;}
 .m-elastic-search>.load>button.close{bottom:auto;top:10px;}
