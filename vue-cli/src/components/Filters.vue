@@ -26,7 +26,7 @@
 					<th class="type">Type</th>
 				</tr>
 			</thead>
-			<tbody id='j-filters-tbody'>
+			<tbody ref="filters">
 				<tr v-for="(task,id) in filters" v-if="filter(task)" :class="{deleted:task.removed}">
 					<td class="chk"><input type="checkbox" :checked="task.checked" v-model="task.checked" /></td>
 					<td class="id">{{id+1}}</td>
@@ -36,14 +36,14 @@
 				</tr>
 			</tbody>
 			<tfoot>
-				<tr ref="noneData">
+				<tr v-if="noneData">
 					<td colspan="5" style="text-align:center;">None data</td>
 				</tr>
 			</tfoot>
 		</table>
 		<button @click="deleteSelected"><template v-if="removed.all">Delete/Restore</template><template v-else-if="removed.deleted">Restore</template><template v-else>Delete</template> selected</button>
 		&nbsp; - &nbsp;
-		Show record count is <span id="j-filters-shows"></span>
+		Show record count is {{n}}
 	</div>
 </template>
 
@@ -103,7 +103,9 @@ export default {
 			status: {all:true,unstart:false,running:false,completed:false,suspend:false},
 			type: {all:true,buy:false,recv:false,sell:false,sent:false,normal:false},
 			removed: {all:true,deleted:false,undelete:false},
-			keyword: ''
+			keyword: '',
+			noneData:false,
+			n:0
 		};
 	},
 	methods: {
@@ -143,9 +145,8 @@ export default {
 			this.isSelectedAll = false;
 		},
 		updateShows: function() {
-			let n = document.getElementById('j-filters-tbody').children.length;
-			document.getElementById('j-filters-shows').innerHTML = n;
-			this.$refs.noneData.style = n ? 'display:none' : '';
+			this.n = this.$refs.filters.children.length;
+			this.noneData = this.n<=0;
 		}
 	},
 	watch: {
