@@ -105,6 +105,10 @@ time curl -v -XPUT 'http://127.0.0.1:9200/vue-cli2?pretty' -H 'Content-Type: app
                 "type": "long"
             }
         }
+    },
+    "settings": {
+        "number_of_shards": "3",
+        "number_of_replicas": "0"
     }
 }'
 echo
