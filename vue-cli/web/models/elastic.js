@@ -581,10 +581,10 @@ const makeIndex = function() {
 				properties: {
 					id: {type:'long'},
 					pid: {type:'long'},
-					name: {type:'text',fielddata:true},
-					path: {type:'text',fielddata:true},
-					link: {type:'text',fielddata:true},
-					type: {type:'text',fielddata:true},
+					name: {type:'text',fields:{raw:{type:'keyword'}},fielddata:true},
+					path: {type:'text',fields:{raw:{type:'keyword'}},fielddata:true},
+					link: {type:'text',fields:{raw:{type:'keyword'}},fielddata:true},
+					type: {type:'text',fields:{raw:{type:'keyword'}},fielddata:true},
 					size: {type:'long'},
 					mode: {type:'long'},
 					nlink: {type:'long'},
@@ -592,10 +592,10 @@ const makeIndex = function() {
 					gid: {type:'long'},
 					dev: {type:'long'},
 					ino: {type:'long'},
-					atime: {type:'text',fielddata:true},
-					mtime: {type:'text',fielddata:true},
-					ctime: {type:'text',fielddata:true},
-					birthtime: {type:'text',fielddata:true}
+					atime: {type:'text',fields:{raw:{type:'keyword'}},fielddata:true},
+					mtime: {type:'text',fields:{raw:{type:'keyword'}},fielddata:true},
+					ctime: {type:'text',fields:{raw:{type:'keyword'}},fielddata:true},
+					birthtime: {type:'text',fields:{raw:{type:'keyword'}},fielddata:true}
 				}
 			}
 		}
