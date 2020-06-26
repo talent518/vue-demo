@@ -29,9 +29,9 @@
 	<table>
 		<thead>
 			<tr>
-				<th :class="'name '+sort.name" @click="changeSort('name',$event)">Name</th>
-				<th :class="'path '+sort.path" @click="changeSort('path',$event)">Path</th>
-				<th :class="'link '+sort.link" @click="changeSort('link',$event)">Link</th>
+				<th :class="'name '+sort['name.raw']" @click="changeSort('name.raw',$event)">Name</th>
+				<th :class="'path '+sort['path.raw']" @click="changeSort('path.raw',$event)">Path</th>
+				<th :class="'link '+sort['link.raw']" @click="changeSort('link.raw',$event)">Link</th>
 				<th :class="'type '+sort.type" @click="changeSort('type',$event)">Type</th>
 				<th :class="'num size '+sort.size" @click="changeSort('size',$event)">Size</th>
 				<th :class="'num mode '+sort.mode" @click="changeSort('mode',$event)">Mode</th>
@@ -40,10 +40,10 @@
 				<th :class="'num gid '+sort.gid" @click="changeSort('gid',$event)">Gid</th>
 				<th :class="'num dev '+sort.dev" @click="changeSort('dev',$event)">Device no</th>
 				<th :class="'num ino '+sort.ino" @click="changeSort('ino',$event)">Inode</th>
-				<th :class="'time atime '+sort.atime" @click="changeSort('atime',$event)">Access time</th>
-				<th :class="'time mtime '+sort.mtime" @click="changeSort('mtime',$event)">Modify time</th>
-				<th :class="'time ctime '+sort.ctime" @click="changeSort('ctime',$event)">Create time</th>
-				<th :class="'time birthtime '+sort.birthtime" @click="changeSort('birthtime',$event)">Birth time</th>
+				<th :class="'time atime '+sort['atime.raw']" @click="changeSort('atime.raw',$event)">Access time</th>
+				<th :class="'time mtime '+sort['mtime.raw']" @click="changeSort('mtime.raw',$event)">Modify time</th>
+				<th :class="'time ctime '+sort['ctime.raw']" @click="changeSort('ctime.raw',$event)">Create time</th>
+				<th :class="'time birthtime '+sort['birthtime.raw']" @click="changeSort('birthtime.raw',$event)">Birth time</th>
 			</tr>
 		</thead>
 		<tbody>
